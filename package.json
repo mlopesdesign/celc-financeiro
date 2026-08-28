@@ -1,0 +1,10 @@
+{
+  "name": "celc-financeiro",
+  "version": "0.2.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "test": "node tests/lancamentos.mjs && node tests/auth.mjs && node tests/atualizador.mjs && node tests/categorias.mjs",
+    "graphify": "node tools/graphify.js"
+  }
+}

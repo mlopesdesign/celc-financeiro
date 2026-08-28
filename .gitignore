@@ -1,0 +1,12 @@
+node_modules/
+dist/
+Portable/
+Release/
+tools/release/
+*.log
+*.tmp
+*.old
+*.db
+*.db-shm
+*.db-wal
+.env
