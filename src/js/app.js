@@ -3,7 +3,7 @@ import {garantirAcesso,validarAcesso} from './auth.js';
 import {criarApi} from './backend/servidor.js';
 import {verificarAtualizacao,instalarAtualizacao} from './backend/atualizador.js';
 
-const APP_VERSION='0.2.0';
+const APP_VERSION='0.2.1';
 const hoje=new Date().toISOString().slice(0,10);
 const $=seletor=>document.querySelector(seletor);
 const $$=seletor=>Array.from(document.querySelectorAll(seletor));
@@ -355,8 +355,9 @@ async function iniciar(){
     api=criarApi({banco,Neutralino:window.Neutralino});
     $('#loginUsuario').value='admin';
     ligarBase();
+    await api('lancamentos:recorrencias',{referencia:hoje});
+    await api('lancamentos:atualizarVencidos',{referencia:hoje});
     await render();
-    api('lancamentos:recorrencias',{referencia:hoje}).then(()=>render()).catch(erro=>console.error('Recorrências não puderam ser atualizadas na abertura.',erro));
   }catch(erro){
     console.error(erro);
     $('#conteudo').innerHTML=`<section class="panel"><h3>Falha na inicialização</h3><p class="subtitle">${esc(erro.message||erro)}</p></section>`;

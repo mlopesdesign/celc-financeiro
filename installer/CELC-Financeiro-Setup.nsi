@@ -1,26 +1,27 @@
-﻿Unicode true
+Unicode true
 RequestExecutionLevel user
-SetCompressor /SOLID lzma
-SetCompressorDictSize 64
+SetCompressor /SOLID zlib
 ManifestDPIAware true
 
 !define APP_NAME "CELC Financeiro"
-!define APP_VERSION "0.2.0"
+!define APP_VERSION "0.2.1"
 !define APP_PUBLISHER "ML Lopes Design"
 !define APP_EXE "CELC Financeiro.exe"
 !define APP_REGKEY "Software\\ML Lopes Design\\CELC Financeiro"
 !define UNINSTALL_KEY "Software\\Microsoft\\Windows\\CurrentVersion\\Uninstall\\CELC Financeiro"
 
 Name "${APP_NAME} ${APP_VERSION}"
-OutFile "..\\Release\\CELC-Financeiro-Setup-0.2.0.exe"
-VIProductVersion "0.2.0.0"
+OutFile "..\\Release\\CELC-Financeiro-Setup-0.2.1.exe"
+VIProductVersion "0.2.1.0"
 VIAddVersionKey "ProductName" "CELC Financeiro"
-VIAddVersionKey "ProductVersion" "0.2.0"
+VIAddVersionKey "ProductVersion" "0.2.1"
 VIAddVersionKey "CompanyName" "ML Lopes Design"
 VIAddVersionKey "LegalCopyright" "© 2026 ML Lopes Design"
 VIAddVersionKey "FileDescription" "Instalador do CELC Financeiro"
-VIAddVersionKey "FileVersion" "0.2.0"
-VIAddVersionKey "OriginalFilename" "CELC-Financeiro-Setup-0.2.0.exe"
+VIAddVersionKey "FileVersion" "0.2.1"
+VIAddVersionKey "OriginalFilename" "CELC-Financeiro-Setup-0.2.1.exe"
+Icon "..\assets\celc-app-icon.ico"
+UninstallIcon "..\assets\celc-app-icon.ico"
 InstallDir "$LOCALAPPDATA\\Programs\\CELC Financeiro"
 InstallDirRegKey HKCU "${APP_REGKEY}" "InstallDir"
 BrandingText "Colégio CELC · Gestão financeira"
@@ -54,6 +55,7 @@ Section "CELC Financeiro" SEC_APP
   File /oname=CELC_Financeiro.exe "..\\dist\\CELC Financeiro\\CELC Financeiro-win_x64.exe"
   Rename "$INSTDIR\\CELC_Financeiro.exe" "$INSTDIR\\${APP_EXE}"
   File "..\\dist\\CELC Financeiro\\resources.neu"
+  File /oname=celc-app-icon.ico "..\\assets\\celc-app-icon.ico"
   InitPluginsDir
   SetOutPath "$PLUGINSDIR"
   File /oname=MicrosoftEdgeWebView2RuntimeInstallerX64.exe "..\\tools\\release\\MicrosoftEdgeWebView2RuntimeInstallerX64.exe"
@@ -66,13 +68,13 @@ Section "CELC Financeiro" SEC_APP
   WriteRegStr HKCU "${UNINSTALL_KEY}" "DisplayName" "${APP_NAME}"
   WriteRegStr HKCU "${UNINSTALL_KEY}" "DisplayVersion" "${APP_VERSION}"
   WriteRegStr HKCU "${UNINSTALL_KEY}" "Publisher" "${APP_PUBLISHER}"
-  WriteRegStr HKCU "${UNINSTALL_KEY}" "DisplayIcon" "$INSTDIR\\${APP_EXE}"
+  WriteRegStr HKCU "${UNINSTALL_KEY}" "DisplayIcon" "$INSTDIR\\celc-app-icon.ico"
   WriteRegStr HKCU "${UNINSTALL_KEY}" "UninstallString" '"$INSTDIR\\Desinstalar CELC Financeiro.exe"'
   WriteRegDWORD HKCU "${UNINSTALL_KEY}" "NoModify" 1
   WriteRegDWORD HKCU "${UNINSTALL_KEY}" "NoRepair" 1
   CreateDirectory "$SMPROGRAMS\\CELC Financeiro"
-  CreateShortcut "$SMPROGRAMS\\CELC Financeiro\\CELC Financeiro.lnk" "$INSTDIR\\${APP_EXE}"
-  CreateShortcut "$DESKTOP\\CELC Financeiro.lnk" "$INSTDIR\\${APP_EXE}"
+  CreateShortcut "$SMPROGRAMS\\CELC Financeiro\\CELC Financeiro.lnk" "$INSTDIR\\${APP_EXE}" "" "$INSTDIR\\celc-app-icon.ico" 0
+  CreateShortcut "$DESKTOP\\CELC Financeiro.lnk" "$INSTDIR\\${APP_EXE}" "" "$INSTDIR\\celc-app-icon.ico" 0
 SectionEnd
 
 Section "Uninstall"
@@ -82,6 +84,7 @@ Section "Uninstall"
   Delete "$INSTDIR\\Desinstalar CELC Financeiro.exe"
   Delete "$INSTDIR\\${APP_EXE}"
   Delete "$INSTDIR\\resources.neu"
+  Delete "$INSTDIR\\celc-app-icon.ico"
   RMDir /r "$INSTDIR\\resources"
   RMDir "$INSTDIR"
   DeleteRegKey HKCU "${UNINSTALL_KEY}"

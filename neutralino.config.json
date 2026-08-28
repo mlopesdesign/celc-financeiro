@@ -3,14 +3,14 @@
   "applicationName": "CELC Financeiro",
   "author": "ML Lopes Design",
   "description": "Gestão financeira do Colégio CELC",
-  "applicationIcon": "assets/celc-app-icon.png",
-  "version": "0.2.0",
+  "applicationIcon": "assets/celc-app-icon.ico",
+  "version": "0.2.1",
   "defaultMode": "window",
   "documentRoot": "/src/",
   "url": "/index.html",
   "enableNativeAPI": true,
   "enableServer": true,
   "nativeAllowList": ["app.*", "filesystem.*", "os.*", "storage.*"],
-  "modes": {"window": {"title": "CELC Financeiro", "icon": "/assets/celc-app-icon.png", "width": 1440, "height": 920, "minWidth": 1024, "minHeight": 720, "resizable": true, "maximizable": true, "exitProcessOnClose": true}},
+  "modes": {"window": {"title": "CELC Financeiro", "icon": "/assets/celc-app-icon.ico", "width": 1440, "height": 920, "minWidth": 1024, "minHeight": 720, "resizable": true, "maximizable": true, "exitProcessOnClose": true}},
   "cli": {"binaryName": "CELC Financeiro", "resourcesPath": "/src", "binaryVersion": "6.3.0", "clientVersion": "6.3.0", "distributionPath": "/dist"}
 }
