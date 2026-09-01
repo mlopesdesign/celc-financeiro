@@ -1,8 +1,8 @@
-# Teste da versão 0.2.7
+# Teste da versão 0.2.9
 
 ## Abertura e navegação
 
-1. Abra `Release/CELC-Financeiro-Setup-0.2.7.exe` e conclua a instalação.
+1. Abra `Release/CELC-Financeiro-Setup-0.2.9.exe` e conclua a instalação.
 2. Confirme que a janela abre no painel interno do CELC Financeiro.
 3. Clique em todos os itens da barra lateral: Visão geral, Caixa diário, Alunos devedores, Entradas, Despesas, Contas a receber, Contas a pagar, Categorias, Relatórios e Configurações.
 4. Cada item precisa trocar o título da página, manter a barra lateral fixa e carregar conteúdo próprio sem tela branca.

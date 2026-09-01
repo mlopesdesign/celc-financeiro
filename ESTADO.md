@@ -1,7 +1,7 @@
 # Estado do projeto — CELC Financeiro
 
-**Versão publicada mais recente:** `0.2.7`
-**Estado de validação:** correção do updater e do toast validada localmente; atualização em instalação existente real ainda pendente.
+**Versão em preparação:** `0.2.9`
+**Estado de validação:** ocultação do módulo de alunos devedores em validação; atualização em instalação existente real ainda pendente.
 **Aplicação:** desktop Windows para a gestão financeira do Colégio CELC.  
 **Stack:** JavaScript ESM, HTML/CSS puro, sql.js (SQLite local), Neutralino.js 6.3.0 e instalador NSIS.
 
@@ -40,6 +40,14 @@ Após duas tentativas de atualização reportadas como fracassadas, a correção
 - O toast global tem largura responsiva, quebra de texto e uma regra final que evita corte em escalas do Windows.
 - O manifesto aceita somente a URL oficial de `resources.neu` do repositório CELC.
 - Release publicada: `v0.2.7`, commit `e68374f`, com Setup, `resources.neu`, `latest.json` e `SHA256SUMS.txt`.
+
+## Navegação — 0.2.8
+
+- “Alunos devedores” foi ocultado da barra lateral sem remover a tela, as rotas, os dados ou as regras financeiras do módulo.
+
+## Preparação — 0.2.9
+
+- A versão `0.2.9` mantém a navegação sem a entrada “Alunos devedores” e foi preparada para atualização online.
 
 ## Entregas implementadas
 

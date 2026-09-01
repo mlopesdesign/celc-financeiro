@@ -4,7 +4,7 @@
   "author": "ML Lopes Design",
   "description": "Gestão financeira do Colégio CELC",
   "applicationIcon": "assets/celc-app-icon.ico",
-  "version": "0.2.7",
+  "version": "0.2.9",
   "defaultMode": "window",
   "documentRoot": "/src/",
   "url": "/index.html",

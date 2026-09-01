@@ -30,4 +30,4 @@ Consulte [AGENTS.md](AGENTS.md) para as regras de desenvolvimento e [GRAPHIFY.md
 
 ## Situação atual
 
-Versão de instalação `0.2.7`: dashboard funcional, lançamentos de entrada e despesa persistidos em SQLite no diretório externo do usuário, detalhamento de despesas no Caixa diário com exclusão segura e atualização online com download validado, troca resiliente e reabertura automática. Consulte `docs/TESTE-DA-VERSAO.md` antes de testar.
+Versão de instalação `0.2.9`: dashboard funcional, lançamentos de entrada e despesa persistidos em SQLite no diretório externo do usuário, módulo de alunos devedores oculto na navegação e atualização online com download validado, troca resiliente e reabertura automática. Consulte `docs/TESTE-DA-VERSAO.md` antes de testar.
