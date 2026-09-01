@@ -1,8 +1,44 @@
 # Estado do projeto — CELC Financeiro
 
-**Versão em preparação:** `0.2.5`
+**Versão em preparação:** `0.2.7`
+**Estado de validação:** correção do updater e do toast em validação local; atualização em instalação existente ainda pendente.
 **Aplicação:** desktop Windows para a gestão financeira do Colégio CELC.  
 **Stack:** JavaScript ESM, HTML/CSS puro, sql.js (SQLite local), Neutralino.js 6.3.0 e instalador NSIS.
+
+## Estado atual — correção retomada (2026-09-01)
+
+Após duas tentativas de atualização reportadas como fracassadas, a correção foi retomada nesta versão. O banco externo deve ser preservado durante toda a validação.
+
+### Publicação anterior
+
+- Tag/release: `v0.2.6` — https://github.com/mlopesdesign/celc-financeiro/releases/tag/v0.2.6
+- Commit: `978fbb2d8a2d14759d83ac7d2656c8fc916691db`
+- Anexos publicados: `CELC-Financeiro-Setup-0.2.6.exe`, `resources.neu`, `latest.json` e `SHA256SUMS.txt`.
+- Manifesto público consultado: versão `0.2.6`.
+- SHA-256 público do `resources.neu`: `DD7D4BAA149A8A5462B122E6581DED2F9B0AA89DAB3D5886F7970106429254EB`.
+
+### Problemas ainda não aceitos como resolvidos
+
+1. Na máquina do cliente, clicar para instalar a atualização não produziu atualização observável.
+2. O toast de atenção/atualização foi reportado como cortado e sem explicação suficiente.
+3. O ciclo real de download, substituição de `resources.neu`, fechamento e reabertura ainda precisa ser reproduzido e validado em uma instalação existente.
+4. A correção para usar a versão do pacote (`APP_VERSION`) em vez da versão fixa do binário foi incluída na `v0.2.6`, mas ainda não foi confirmada pelo cliente.
+5. O instalador foi recompilado com script NSIS reconhecido como UTF-8, mas a confirmação visual em máquina cliente continua pendente.
+
+### Retomada obrigatória
+
+- Não declarar a atualização online funcional sem teste real em uma instalação existente.
+- Investigar primeiro com logs e estado da instalação, sem apagar dados.
+- Preservar o banco em `%APPDATA%\CELC Financeiro\dados` durante qualquer teste.
+- A correção parte da `v0.2.6` e segue integralmente o fluxo de `AGENTS.md`; não reutilizar a versão nem fazer downgrade.
+
+## Correção do updater e toast — 0.2.7
+
+- Falhas de backup, consulta e instalação retornam erro humano e não deixam rejeições sem tratamento na interface.
+- O pacote baixado é validado antes de iniciar a troca.
+- A troca usa comando PowerShell codificado em UTF-16LE, tentativas de substituição e log local de execução antes da reabertura.
+- O toast global tem largura responsiva, quebra de texto e uma regra final que evita corte em escalas do Windows.
+- O manifesto aceita somente a URL oficial de `resources.neu` do repositório CELC.
 
 ## Entregas implementadas
 
@@ -66,24 +102,25 @@ Foi criada a automação `lancamentos:atualizarVencidos`.
 
 ## Versão e distribuição
 
-A versão anterior publicada é `v0.2.0` no repositório:
+A versão publicada anterior é `v0.2.6`; a versão em preparação é `v0.2.7` no repositório:
 
 `https://github.com/mlopesdesign/celc-financeiro`
 
-A versão `0.2.5` está sendo finalizada com:
+A release `v0.2.6` foi publicada com:
 
-- detalhamento de despesas no Caixa diário;
-- validação UTF-8;
+- correção do cálculo/exibição da versão a partir do pacote de recursos;
+- atualizador assistido com download temporário e reabertura do executável;
 - bundle `resources.neu` atualizado;
-- instalador `CELC-Financeiro-Setup-0.2.5.exe`;
+- instalador `CELC-Financeiro-Setup-0.2.6.exe`;
 - manifesto de atualização e checksums.
 
 ## Pendências de produto
 
-1. Validar em uma máquina limpa o ciclo completo: instalar, registrar lançamentos, fechar e reabrir.
-2. Publicar a release `v0.2.5` com os quatro anexos: Setup, `resources.neu`, `latest.json` e `SHA256SUMS.txt`.
-3. Validar a atualização online partindo da nova instalação `v0.2.4` para a próxima release, usando o canal nativo.
-4. Definir o fluxo operacional mensal para conferência de caixa, inadimplência e relatórios pela direção.
+1. Reproduzir e corrigir a atualização online em uma instalação existente, sem risco de perda do banco.
+2. Corrigir e validar o posicionamento/conteúdo do toast de atualização e de erro.
+3. Confirmar a codificação UTF-8 das mensagens do instalador em uma máquina Windows limpa.
+4. Validar em uma máquina limpa o ciclo completo: instalar, registrar lançamentos, fechar e reabrir.
+5. Definir o fluxo operacional mensal para conferência de caixa, inadimplência e relatórios pela direção.
 
 ## Regra de continuidade
 

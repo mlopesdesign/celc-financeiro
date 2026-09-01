@@ -6,7 +6,7 @@ assert.equal(compararVersoes('v1.2.0','1.2.0'),0);
 assert.equal(compararVersoes('2.10.0','2.9.9'),-1);
 assert.equal(compararVersoes('1.0','1.0.0'),0);
 
-const manifesto={applicationId:'com.mllopesdesign.celcfinanceiro',version:'0.2.3',resourcesURL:'https://example.test/resources.neu'};
+const manifesto={applicationId:'com.mllopesdesign.celcfinanceiro',version:'0.2.3',resourcesURL:'https://github.com/mlopesdesign/celc-financeiro/releases/download/v0.2.3/resources.neu'};
 const nativo={os:{execCommand:async comando=>{
   assert.match(comando,/curl\.exe/);
   return {exitCode:0,stdOut:JSON.stringify(manifesto)};
@@ -22,4 +22,8 @@ console.error=()=>{};
 const indisponivel=await verificarAtualizacao({os:{execCommand:async()=>({exitCode:22,stdErr:'HTTP 404'})}}, {}, '0.2.2');
 console.error=erroOriginal;
 assert.equal(indisponivel.ok,false);
-console.log('9 asserções aprovadas — comparação e consulta nativa de versões.');
+console.error=()=>{};
+const manifestoInvalido=await verificarAtualizacao({os:{execCommand:async()=>({exitCode:0,stdOut:JSON.stringify({...manifesto,resourcesURL:'https://example.test/resources.neu'})})}}, {}, '0.2.2');
+console.error=erroOriginal;
+assert.equal(manifestoInvalido.ok,false);
+console.log('10 asserções aprovadas — comparação, validação e consulta nativa de versões.');

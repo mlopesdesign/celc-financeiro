@@ -17,10 +17,15 @@ export async function criarBackup(Neutralino, caminhoBanco) {
   if (!caminhoBanco || !Neutralino) return { ok:false, erro:'Backup disponível somente no aplicativo Windows.' };
   const pasta=caminhoBanco.slice(0,caminhoBanco.lastIndexOf('\\')), destinoPasta=`${pasta}\\backups`, nome=`celc-financeiro-${new Date().toISOString().replaceAll(':','-').slice(0,19)}.db`;
   try { await Neutralino.filesystem.createDirectory(destinoPasta); } catch { /* pasta existente */ }
-  const dados=await Neutralino.filesystem.readBinaryFile(caminhoBanco);
-  if (!(await validarBanco(dados))) return { ok:false, erro:'O banco atual não passou na validação de integridade.' };
-  await Neutralino.filesystem.writeBinaryFile(`${destinoPasta}\\${nome}`,dados);
-  return { ok:true,caminho:`${destinoPasta}\\${nome}` };
+  try {
+    const dados=await Neutralino.filesystem.readBinaryFile(caminhoBanco);
+    if (!(await validarBanco(dados))) return { ok:false, erro:'O banco atual não passou na validação de integridade.' };
+    await Neutralino.filesystem.writeBinaryFile(`${destinoPasta}\\${nome}`,dados);
+    return { ok:true,caminho:`${destinoPasta}\\${nome}` };
+  } catch (erro) {
+    console.error('Falha ao criar backup antes da atualização.',erro);
+    return { ok:false, erro:'Não foi possível criar o backup antes da atualização. Nenhum arquivo do aplicativo foi trocado.' };
+  }
 }
 
 export async function restaurarBackupMaisRecente(Neutralino, caminhoBanco) {

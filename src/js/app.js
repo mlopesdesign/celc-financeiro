@@ -3,7 +3,7 @@ import {garantirAcesso,validarAcesso} from './auth.js';
 import {criarApi} from './backend/servidor.js';
 import {verificarAtualizacao,instalarAtualizacao} from './backend/atualizador.js';
 
-const APP_VERSION='0.2.6';
+const APP_VERSION='0.2.7';
 const hoje=new Date().toISOString().slice(0,10);
 const $=seletor=>document.querySelector(seletor);
 const $$=seletor=>Array.from(document.querySelectorAll(seletor));
@@ -33,6 +33,7 @@ const telas={
 };
 
 function aviso(texto,erro=false){
+  document.querySelectorAll('.toast-celc').forEach(item=>item.remove());
   const toast=document.createElement('div');
   toast.className='toast-celc show'+(erro?' erro':'');toast.setAttribute('role','alert');toast.setAttribute('aria-live','assertive');
   toast.innerHTML=`<b>${erro?'Atenção':'CELC Financeiro'}</b><span>${esc(texto)}</span>`;
@@ -309,19 +310,13 @@ function ligarEventos(){
     resposta.ok?location.reload():aviso(resposta.erro,true);
   });
   $('#verificar')&&($('#verificar').onclick=async()=>{
-    const versao=APP_VERSION;
-    const resposta=await verificarAtualizacao(window.Neutralino,banco,versao);
-    $('#statusAtualizacao').textContent=resposta.ok?(resposta.disponivel?`Nova versão ${resposta.atualizacao.version} disponível.`:resposta.mensagem):resposta.erro;
-    $('#instalar').disabled=!resposta.disponivel;
-    $('#instalar').dataset.disponivel=resposta.disponivel?'1':'0';
-    aviso(resposta.ok?(resposta.disponivel?`Atualização ${resposta.atualizacao.version} encontrada. Clique em Instalar atualização.`:resposta.mensagem):resposta.erro,!resposta.ok);
+    const botao=$('#verificar');botao.disabled=true;const versao=APP_VERSION;
+    try{const resposta=await verificarAtualizacao(window.Neutralino,banco,versao);$('#statusAtualizacao').textContent=resposta.ok?(resposta.disponivel?`Nova versão ${resposta.atualizacao.version} disponível.`:resposta.mensagem):resposta.erro;$('#instalar').disabled=!resposta.disponivel;$('#instalar').dataset.disponivel=resposta.disponivel?'1':'0';aviso(resposta.ok?(resposta.disponivel?`Atualização ${resposta.atualizacao.version} encontrada. Clique em Instalar atualização.`:resposta.mensagem):resposta.erro,!resposta.ok);}catch(erro){$('#statusAtualizacao').textContent='Não foi possível consultar atualizações agora.';aviso('Não foi possível consultar atualizações agora. Tente novamente.',true);}finally{botao.disabled=false;}
   });
   $('#instalar')&&($('#instalar').onclick=async evento=>{
     if(evento.currentTarget.dataset.disponivel!=='1')return;
-    const versao=APP_VERSION;
-    const resposta=await instalarAtualizacao(window.Neutralino,banco,versao);
-    $('#statusAtualizacao').textContent=resposta.ok?'Atualização baixada. O sistema será fechado e reaberto automaticamente.':resposta.erro;
-    if(!resposta.ok)aviso(resposta.erro,true);
+    const botao=evento.currentTarget,versao=APP_VERSION;botao.disabled=true;$('#verificar').disabled=true;$('#statusAtualizacao').textContent='Preparando backup e download da atualização...';aviso('Preparando backup e download. O aplicativo será reaberto ao concluir.');
+    try{const resposta=await instalarAtualizacao(window.Neutralino,banco,versao);if(!resposta.ok){$('#statusAtualizacao').textContent=resposta.erro;aviso(resposta.erro,true);botao.disabled=false;$('#verificar').disabled=false;return;}$('#statusAtualizacao').textContent='Download concluído. O aplicativo será fechado e reaberto automaticamente.';}catch(erro){const mensagem='A atualização não pôde ser iniciada. Nenhum arquivo foi trocado.';$('#statusAtualizacao').textContent=mensagem;aviso(mensagem,true);botao.disabled=false;$('#verificar').disabled=false;}
   });
 }
 
