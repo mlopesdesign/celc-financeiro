@@ -1,7 +1,7 @@
 # Estado do projeto — CELC Financeiro
 
-**Versão em preparação:** `0.2.7`
-**Estado de validação:** correção do updater e do toast em validação local; atualização em instalação existente ainda pendente.
+**Versão publicada mais recente:** `0.2.7`
+**Estado de validação:** correção do updater e do toast validada localmente; atualização em instalação existente real ainda pendente.
 **Aplicação:** desktop Windows para a gestão financeira do Colégio CELC.  
 **Stack:** JavaScript ESM, HTML/CSS puro, sql.js (SQLite local), Neutralino.js 6.3.0 e instalador NSIS.
 
@@ -39,6 +39,7 @@ Após duas tentativas de atualização reportadas como fracassadas, a correção
 - A troca usa comando PowerShell codificado em UTF-16LE, tentativas de substituição e log local de execução antes da reabertura.
 - O toast global tem largura responsiva, quebra de texto e uma regra final que evita corte em escalas do Windows.
 - O manifesto aceita somente a URL oficial de `resources.neu` do repositório CELC.
+- Release publicada: `v0.2.7`, commit `e68374f`, com Setup, `resources.neu`, `latest.json` e `SHA256SUMS.txt`.
 
 ## Entregas implementadas
 
@@ -102,16 +103,16 @@ Foi criada a automação `lancamentos:atualizarVencidos`.
 
 ## Versão e distribuição
 
-A versão publicada anterior é `v0.2.6`; a versão em preparação é `v0.2.7` no repositório:
+A versão publicada mais recente é `v0.2.7` no repositório:
 
 `https://github.com/mlopesdesign/celc-financeiro`
 
-A release `v0.2.6` foi publicada com:
+A release `v0.2.7` foi publicada com:
 
 - correção do cálculo/exibição da versão a partir do pacote de recursos;
 - atualizador assistido com download temporário e reabertura do executável;
 - bundle `resources.neu` atualizado;
-- instalador `CELC-Financeiro-Setup-0.2.6.exe`;
+- instalador `CELC-Financeiro-Setup-0.2.7.exe`;
 - manifesto de atualização e checksums.
 
 ## Pendências de produto
