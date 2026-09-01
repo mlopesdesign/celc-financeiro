@@ -1,7 +1,7 @@
 # Estado do projeto — CELC Financeiro
 
-**Versão em preparação:** `0.2.9`
-**Estado de validação:** ocultação do módulo de alunos devedores em validação; atualização em instalação existente real ainda pendente.
+**Versão em preparação:** `0.2.10`
+**Estado de validação:** correção da validação do banco em preparação; atualização em instalação existente real ainda pendente.
 **Aplicação:** desktop Windows para a gestão financeira do Colégio CELC.  
 **Stack:** JavaScript ESM, HTML/CSS puro, sql.js (SQLite local), Neutralino.js 6.3.0 e instalador NSIS.
 
@@ -48,6 +48,10 @@ Após duas tentativas de atualização reportadas como fracassadas, a correção
 ## Preparação — 0.2.9
 
 - A versão `0.2.9` mantém a navegação sem a entrada “Alunos devedores” e foi preparada para atualização online.
+
+## Correção do backup — 0.2.10
+
+- O validador converte o `ArrayBuffer` retornado pelo Neutralino para `Uint8Array` antes de validar o SQLite, permitindo backup de bancos válidos com lançamentos.
 
 ## Entregas implementadas
 
