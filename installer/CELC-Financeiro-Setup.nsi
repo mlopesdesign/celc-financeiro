@@ -1,25 +1,25 @@
-Unicode true
+﻿Unicode true
 RequestExecutionLevel user
 SetCompressor /SOLID zlib
 ManifestDPIAware true
 
 !define APP_NAME "CELC Financeiro"
-!define APP_VERSION "0.2.3"
+!define APP_VERSION "0.2.4"
 !define APP_PUBLISHER "ML Lopes Design"
 !define APP_EXE "CELC Financeiro.exe"
 !define APP_REGKEY "Software\\ML Lopes Design\\CELC Financeiro"
 !define UNINSTALL_KEY "Software\\Microsoft\\Windows\\CurrentVersion\\Uninstall\\CELC Financeiro"
 
 Name "${APP_NAME} ${APP_VERSION}"
-OutFile "..\\Release\\CELC-Financeiro-Setup-0.2.3.exe"
-VIProductVersion "0.2.3.0"
+OutFile "..\\Release\\CELC-Financeiro-Setup-0.2.4.exe"
+VIProductVersion "0.2.4.0"
 VIAddVersionKey "ProductName" "CELC Financeiro"
-VIAddVersionKey "ProductVersion" "0.2.3"
+VIAddVersionKey "ProductVersion" "0.2.4"
 VIAddVersionKey "CompanyName" "ML Lopes Design"
 VIAddVersionKey "LegalCopyright" "© 2026 ML Lopes Design"
 VIAddVersionKey "FileDescription" "Instalador do CELC Financeiro"
-VIAddVersionKey "FileVersion" "0.2.3"
-VIAddVersionKey "OriginalFilename" "CELC-Financeiro-Setup-0.2.3.exe"
+VIAddVersionKey "FileVersion" "0.2.4"
+VIAddVersionKey "OriginalFilename" "CELC-Financeiro-Setup-0.2.4.exe"
 Icon "..\assets\celc-app-icon.ico"
 UninstallIcon "..\assets\celc-app-icon.ico"
 InstallDir "$LOCALAPPDATA\\Programs\\CELC Financeiro"

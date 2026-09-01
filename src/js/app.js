@@ -3,7 +3,7 @@ import {garantirAcesso,validarAcesso} from './auth.js';
 import {criarApi} from './backend/servidor.js';
 import {verificarAtualizacao,instalarAtualizacao} from './backend/atualizador.js';
 
-const APP_VERSION='0.2.3';
+const APP_VERSION='0.2.4';
 const hoje=new Date().toISOString().slice(0,10);
 const $=seletor=>document.querySelector(seletor);
 const $$=seletor=>Array.from(document.querySelectorAll(seletor));
@@ -65,7 +65,7 @@ async function lista(tipo,situacoes){
 }
 
 function tabelaCaixa(itens){
-  return `<div class="table-wrap"><table><thead><tr><th>DATA</th><th>TIPO</th><th>DETALHE</th><th>RECEITAS</th><th>DESPESAS</th></tr></thead><tbody>${itens.map(x=>`<tr><td>${dataPt(x.data)}</td><td><span class="type-badge ${x.tipo||'entrada'}">${(x.tipo||'entrada')==='entrada'?'receita':'despesa'}</span></td><td><div class="title-stack"><b>${esc(x.origem||'Fechamento diário')}</b><small>${esc(x.formaPagamento||'Dinheiro')}${x.observacao?` · ${esc(x.observacao)}`:''}</small></div></td><td class="amount in">${(x.tipo||'entrada')==='entrada'?brl(x.valorCentavos):'-'}</td><td class="amount out">${x.tipo==='despesa'?brl(x.valorCentavos):'-'}</td></tr>`).join('')||'<tr><td colspan="5" class="empty">Nenhum fechamento registrado neste caixa.</td></tr>'}</tbody></table></div>`;
+  return `<div class="table-wrap"><table><thead><tr><th>DATA</th><th>TIPO</th><th>DETALHE</th><th>RECEITAS</th><th>DESPESAS</th><th>AÇÕES</th></tr></thead><tbody>${itens.map(x=>`<tr><td>${dataPt(x.data)}</td><td><span class="type-badge ${x.tipo||'entrada'}">${(x.tipo||'entrada')==='entrada'?'receita':'despesa'}</span></td><td><div class="title-stack"><b>${esc(x.origem||'Fechamento diário')}</b><small>${esc(x.formaPagamento||'Dinheiro')}${x.observacao?` · ${esc(x.observacao)}`:''}</small></div></td><td class="amount in">${(x.tipo||'entrada')==='entrada'?brl(x.valorCentavos):'-'}</td><td class="amount out">${x.tipo==='despesa'?brl(x.valorCentavos):'-'}</td><td>${x.tipo==='despesa'?`<button class="text-button danger" data-excluir-caixa="${esc(x.id)}">Excluir</button>`:'—'}</td></tr>`).join('')||'<tr><td colspan="6" class="empty">Nenhum fechamento registrado neste caixa.</td></tr>'}</tbody></table></div>`;
 }
 
 async function caixaDiario(){
@@ -252,6 +252,16 @@ function ligarEventos(){
     if(resposta.ok)render();
   });
   $('#abrirDetalhamento')&&($('#abrirDetalhamento').onclick=abrirDetalhamentoCaixa);
+  $$('[data-excluir-caixa]').forEach(botao=>botao.onclick=async()=>{
+    if(botao.dataset.confirma!=='1'){
+      botao.dataset.confirma='1';botao.textContent='Confirmar exclusão';
+      setTimeout(()=>{if(botao.isConnected&&botao.dataset.confirma==='1'){botao.dataset.confirma='0';botao.textContent='Excluir';}},3500);
+      return;
+    }
+    const resposta=await api('caixa:excluir',{id:botao.dataset.excluirCaixa});
+    aviso(resposta.ok?'Movimentação excluída e saldo ajustado.':resposta.erro,!resposta.ok);
+    if(resposta.ok)render();
+  });
   $('#formDevedor')&&($('#formDevedor').onsubmit=async evento=>{
     evento.preventDefault();
     const dados=Object.fromEntries(new FormData(evento.currentTarget));

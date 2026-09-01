@@ -43,6 +43,7 @@
 | `categorias:criar` | src/js/app.js |
 | `categorias:editar` | src/js/app.js |
 | `caixa:registrar` | src/js/app.js |
+| `caixa:excluir` | src/js/app.js |
 | `devedores:registrar` | src/js/app.js |
 | `categorias:arquivar` | src/js/app.js |
 | `categorias:excluir` | src/js/app.js |
@@ -67,6 +68,7 @@
 | `caixa:listar` | src/js/backend/servidor.js |
 | `caixa:registrar` | src/js/backend/servidor.js |
 | `caixa:pagarDespesa` | src/js/backend/servidor.js |
+| `caixa:excluir` | src/js/backend/servidor.js |
 | `devedores:listar` | src/js/backend/servidor.js |
 | `devedores:registrar` | src/js/backend/servidor.js |
 | `devedores:baixar` | src/js/backend/servidor.js |

@@ -37,6 +37,20 @@ export async function pagarDespesaNoCaixa(db,dados,u={id:'direcao-celc'}){
   return {ok:true,caixaId,lancamentoId:id};
 }
 
+export async function excluirCaixaDiario(db,id,u={id:'direcao-celc'}){
+  const caixaId=texto(id),item=db.listarCaixaDiario().find(x=>x.id===caixaId);
+  if(!item)return {ok:false,erro:'Movimentação do caixa não encontrada.'};
+  const lancamento=item.lancamentoId?db.listarLancamentos().find(x=>x.id===item.lancamentoId):null,t=agora();
+  if(item.tipo==='despesa'&&lancamento){
+    const gerado=lancamento.descricao.startsWith('Caixa diário - despesa');
+    if(gerado)await db.executar('DELETE FROM lancamentos WHERE id=?',[lancamento.id]);
+    else {const situacao=lancamento.vencimento&&lancamento.vencimento<item.data?'vencido':'pendente';await db.executar('UPDATE lancamentos SET situacao=?,liquidado_em=?,atualizado_em=? WHERE id=?',[situacao,null,t,lancamento.id]);}
+  }
+  await db.executar('DELETE FROM caixa_diario WHERE id=?',[caixaId]);
+  await db.executar('INSERT INTO auditoria (usuario_id,acao,entidade,entidade_id,criado_em,detalhes) VALUES (?,?,?,?,?,?)',[u.id,'excluir','caixa_diario',caixaId,item.origem||'']);
+  return {ok:true};
+}
+
 export async function registrarDevedor(db,dados,u={id:'direcao-celc'}){
   const aluno=texto(dados.aluno),descricao=texto(dados.descricao),vencimento=texto(dados.vencimento),valor=valorCentavos(dados.valorCentavos),t=agora(),id=db.proximoId('dev');
   if(!aluno)return {ok:false,erro:'Informe o nome do aluno.'};

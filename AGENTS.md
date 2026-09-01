@@ -95,6 +95,8 @@ Publicar esses artefatos juntos na GitHub Release. Nunca anexar banco, backup, d
 
 ## Versões publicadas
 
+- v0.2.3 (2026-09-01): consulta e download de atualizações pelo canal nativo do Windows, sem dependência de CORS do WebView2.
+
 - v0.2.0 (2026-08-27): primeira distribuição instalável profissional para Windows x64. O Setup instala por usuário, reconhece uma instalação CELC anterior, preserva integralmente o banco externo e inclui o WebView2 Runtime offline para computadores novos.
 - v0.1.23 (2026-08-27): situação de lançamentos deixa de ser editável e passa a ser calculada pelo registro de pagamento realizado ou pendente; Caixa diário explicita pagamentos feitos no dia; a redundância de atalhos em Despesas é removida e a marca CELC ocupa 60% da largura lateral acima do menu.
 - v0.1.22 (2026-08-27): Caixa diário passa a registrar os totais de receitas e despesas do dia, com detalhamento opcional em popup e geração automática de entrada e saída; pagamentos de alunos devedores aceitam valor total ou parcial, atualizando o saldo e gerando entrada no caixa; Relatórios também exporta PDF nativo na pasta de exportações do CELC.

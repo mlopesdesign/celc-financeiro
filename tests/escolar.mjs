@@ -1,8 +1,8 @@
 import assert from 'node:assert/strict';
-import {registrarCaixaDiario,resumirCaixaDiario,pagarDespesaNoCaixa,registrarDevedor,listarDevedores,baixarDevedor} from '../src/js/backend/core/escolar.js';
+import {registrarCaixaDiario,resumirCaixaDiario,pagarDespesaNoCaixa,excluirCaixaDiario,registrarDevedor,listarDevedores,baixarDevedor} from '../src/js/backend/core/escolar.js';
 
 const caixa=[],devedores=[],lancamentos=[],auditoria=[];let n=0;
-const db={proximoId:p=>`${p}-${++n}`,listarCaixaDiario:()=>[...caixa],listarLancamentos:()=>[...lancamentos],listarDevedores:()=>[...devedores],executar:async(q,p)=>{if(q.startsWith('INSERT INTO lancamentos'))lancamentos.push({id:p[0],descricao:p[1],tipo:p[2],valorCentavos:p[5],situacao:p[9],liquidadoEm:p[8]});else if(q.startsWith('UPDATE lancamentos SET situacao=')){const item=lancamentos.find(x=>x.id===p[3]);item.situacao=p[0];item.liquidadoEm=p[1]}else if(q.startsWith('INSERT INTO caixa_diario'))caixa.push({id:p[0],data:p[1],tipo:p[2],origem:p[3],aluno:p[4],responsavel:p[5],formaPagamento:p[6],valorCentavos:p[7],observacao:p[8],lancamentoId:p[9],criadoEm:p[10],usuarioId:p[11]});else if(q.startsWith('INSERT INTO alunos_devedores'))devedores.push({id:p[0],aluno:p[1],turma:p[2],responsavel:p[3],contato:p[4],descricao:p[5],valorCentavos:p[6],valorPagoCentavos:0,vencimento:p[7],situacao:p[8],observacao:p[9],criadoEm:p[10],atualizadoEm:p[11],usuarioId:p[12]});else if(q.startsWith('UPDATE alunos_devedores SET situacao=')){const item=devedores.find(x=>x.id===p[3]);item.situacao=p[0];item.valorPagoCentavos=p[1];item.atualizadoEm=p[2]}else if(q.startsWith('INSERT INTO auditoria'))auditoria.push(p)}};
+const db={proximoId:p=>`${p}-${++n}`,listarCaixaDiario:()=>[...caixa],listarLancamentos:()=>[...lancamentos],listarDevedores:()=>[...devedores],executar:async(q,p)=>{if(q.startsWith('INSERT INTO lancamentos'))lancamentos.push({id:p[0],descricao:p[1],tipo:p[2],valorCentavos:p[5],situacao:p[9],liquidadoEm:p[8],vencimento:p[7]});else if(q.startsWith('UPDATE lancamentos SET situacao=')){const item=lancamentos.find(x=>x.id===p[3]);item.situacao=p[0];item.liquidadoEm=p[1]}else if(q.startsWith('DELETE FROM lancamentos')){const i=lancamentos.findIndex(x=>x.id===p[0]);if(i>=0)lancamentos.splice(i,1)}else if(q.startsWith('INSERT INTO caixa_diario'))caixa.push({id:p[0],data:p[1],tipo:p[2],origem:p[3],aluno:p[4],responsavel:p[5],formaPagamento:p[6],valorCentavos:p[7],observacao:p[8],lancamentoId:p[9],criadoEm:p[10],usuarioId:p[11]});else if(q.startsWith('DELETE FROM caixa_diario')){const i=caixa.findIndex(x=>x.id===p[0]);if(i>=0)caixa.splice(i,1)}else if(q.startsWith('INSERT INTO alunos_devedores'))devedores.push({id:p[0],aluno:p[1],turma:p[2],responsavel:p[3],contato:p[4],descricao:p[5],valorCentavos:p[6],valorPagoCentavos:0,vencimento:p[7],situacao:p[8],observacao:p[9],criadoEm:p[10],atualizadoEm:p[11],usuarioId:p[12]});else if(q.startsWith('UPDATE alunos_devedores SET situacao=')){const item=devedores.find(x=>x.id===p[3]);item.situacao=p[0];item.valorPagoCentavos=p[1];item.atualizadoEm=p[2]}else if(q.startsWith('INSERT INTO auditoria'))auditoria.push(p)}};
 
 assert.equal((await registrarCaixaDiario(db,{data:'2026-08-27',receitasCentavos:35000,despesasCentavos:8000})).ok,true);
 assert.equal(lancamentos.length,2);
@@ -13,6 +13,11 @@ assert.equal((await pagarDespesaNoCaixa(db,{id:'despesa-fixa',data:'2026-08-27'}
 assert.equal(lancamentos.find(x=>x.id==='despesa-fixa').situacao,'pago');
 assert.equal(caixa.some(x=>x.lancamentoId==='despesa-fixa'&&x.formaPagamento==='Dinheiro'),true);
 assert.equal((await pagarDespesaNoCaixa(db,{id:'despesa-fixa',data:'2026-08-27'})).ok,false);
+const caixaAgregado=caixa.find(x=>x.origem==='Fechamento diário'&&x.tipo==='despesa'),caixaCadastrado=caixa.find(x=>x.lancamentoId==='despesa-fixa');
+assert.equal((await excluirCaixaDiario(db,caixaAgregado.id)).ok,true);
+assert.equal(caixa.some(x=>x.id===caixaAgregado.id),false);
+assert.equal((await excluirCaixaDiario(db,caixaCadastrado.id)).ok,true);
+assert.equal(lancamentos.find(x=>x.id==='despesa-fixa').situacao,'pendente');
 const cadastroDevedor=await registrarDevedor(db,{aluno:'Bruno CELC',descricao:'Mensalidade agosto',valorCentavos:42000,vencimento:'2026-08-30'});
 assert.equal(cadastroDevedor.ok,true);
 assert.equal(listarDevedores(db,{situacao:'em_aberto'}).length,1);
@@ -21,4 +26,4 @@ assert.equal(listarDevedores(db,{situacao:'parcial'}).length,1);
 assert.equal((await baixarDevedor(db,cadastroDevedor.devedor.id,{data:'2026-08-27',valorCentavos:30000})).situacao,'quitado');
 assert.equal(listarDevedores(db,{situacao:'quitado'}).length,1);
 assert.equal(auditoria.length>=4,true);
-console.log('15 asserções aprovadas — caixa escolar, despesas e pagamentos parciais de alunos.');
+console.log('17 asserções aprovadas — caixa escolar, despesas, exclusão e pagamentos parciais de alunos.');

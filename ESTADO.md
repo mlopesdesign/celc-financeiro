@@ -1,6 +1,6 @@
 # Estado do projeto — CELC Financeiro
 
-**Versão em preparação:** `0.2.3`
+**Versão em preparação:** `0.2.4`
 **Aplicação:** desktop Windows para a gestão financeira do Colégio CELC.  
 **Stack:** JavaScript ESM, HTML/CSS puro, sql.js (SQLite local), Neutralino.js 6.3.0 e instalador NSIS.
 
@@ -42,6 +42,12 @@ Foi criada a automação `lancamentos:atualizarVencidos`.
 - A instalação preserva o fluxo seguro: persistência do banco, backup obrigatório, troca apenas de `resources.neu` e reinício do aplicativo.
 - A versão `0.2.2` publicada permanece preservada como histórico; a correção segue em nova versão, sem sobrescrever artefatos já distribuídos.
 
+## Caixa e instalador UTF-8 — 0.2.4
+
+- O Caixa diário permite excluir uma despesa com confirmação em dois passos.
+- Ao excluir uma despesa cadastrada paga pelo caixa, o lançamento original volta a pendente ou vencido conforme a data de vencimento; despesas avulsas removem também o lançamento gerado.
+- O script NSIS é salvo com BOM UTF-8, impedindo mensagens corrompidas no instalador Windows.
+
 ## Decisões técnicas
 
 | Decisão | Motivo |
@@ -59,19 +65,19 @@ A versão anterior publicada é `v0.2.0` no repositório:
 
 `https://github.com/mlopesdesign/celc-financeiro`
 
-A versão `0.2.3` está sendo finalizada com:
+A versão `0.2.4` está sendo finalizada com:
 
 - detalhamento de despesas no Caixa diário;
 - validação UTF-8;
 - bundle `resources.neu` atualizado;
-- instalador `CELC-Financeiro-Setup-0.2.3.exe`;
+- instalador `CELC-Financeiro-Setup-0.2.4.exe`;
 - manifesto de atualização e checksums.
 
 ## Pendências de produto
 
 1. Validar em uma máquina limpa o ciclo completo: instalar, registrar lançamentos, fechar e reabrir.
-2. Publicar a release `v0.2.3` com os quatro anexos: Setup, `resources.neu`, `latest.json` e `SHA256SUMS.txt`.
-3. Validar a atualização online partindo da nova instalação `v0.2.3` para a próxima release, usando o canal nativo.
+2. Publicar a release `v0.2.4` com os quatro anexos: Setup, `resources.neu`, `latest.json` e `SHA256SUMS.txt`.
+3. Validar a atualização online partindo da nova instalação `v0.2.4` para a próxima release, usando o canal nativo.
 4. Definir o fluxo operacional mensal para conferência de caixa, inadimplência e relatórios pela direção.
 
 ## Regra de continuidade
