@@ -3,7 +3,7 @@ import {garantirAcesso,validarAcesso} from './auth.js';
 import {criarApi} from './backend/servidor.js';
 import {verificarAtualizacao,instalarAtualizacao} from './backend/atualizador.js';
 
-const APP_VERSION='0.2.11';
+const APP_VERSION='0.2.12';
 const hoje=new Date().toISOString().slice(0,10);
 const $=seletor=>document.querySelector(seletor);
 const $$=seletor=>Array.from(document.querySelectorAll(seletor));
@@ -321,6 +321,7 @@ function ligarEventos(){
 }
 
 function ligarBase(){
+  $('#versaoRodape').textContent=`Versão ${APP_VERSION}`;
   $$('[data-tela]').forEach(botao=>botao.onclick=()=>irPara(botao.dataset.tela));
   $('#novo').onclick=()=>abrirModal();
   $('#backup').onclick=async()=>{
