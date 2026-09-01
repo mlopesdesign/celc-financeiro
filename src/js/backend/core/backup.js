@@ -1,8 +1,9 @@
-async function validarBanco(dados) {
+export async function validarBanco(dados) {
   const bytes=dados instanceof Uint8Array?dados:dados instanceof ArrayBuffer?new Uint8Array(dados):null;
   if (!bytes || bytes.length < 100 || new TextDecoder().decode(bytes.slice(0, 16)) !== 'SQLite format 3\u0000') return false;
-  if (!window.initSqlJs) return false;
-try { const SQL=await initSqlJs({locateFile:(arquivo)=>`js/vendor/${arquivo}`}); const db=new SQL.Database(bytes); const tabelas=db.exec("SELECT name FROM sqlite_master WHERE type='table' AND name IN ('lancamentos','auditoria','acesso')"); const movimentos=db.exec('SELECT COUNT(*) FROM lancamentos'); return Boolean(tabelas[0] && tabelas[0].values.length===3 && movimentos[0] && Number(movimentos[0].values[0][0])>0); } catch { return false; }
+  const carregarSql=globalThis.window?.initSqlJs||globalThis.initSqlJs;
+  if (typeof carregarSql!=='function') return false;
+try { const SQL=await carregarSql({locateFile:(arquivo)=>`js/vendor/${arquivo}`}); const db=new SQL.Database(bytes); const tabelas=db.exec("SELECT name FROM sqlite_master WHERE type='table' AND name IN ('lancamentos','auditoria','acesso')"); const movimentos=db.exec('SELECT COUNT(*) FROM lancamentos'); const valido=Boolean(tabelas[0] && tabelas[0].values.length===3 && movimentos[0] && Number(movimentos[0].values[0][0])>0); db.close(); return valido; } catch { return false; }
 }
 
 async function substituirComSeguranca(Neutralino, destino, dados) {

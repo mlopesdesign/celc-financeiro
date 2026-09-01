@@ -1,7 +1,7 @@
 # Estado do projeto — CELC Financeiro
 
-**Versão em preparação:** `0.2.10`
-**Estado de validação:** correção da validação do banco em preparação; atualização em instalação existente real ainda pendente.
+**Versão em preparação:** `0.2.11`
+**Estado de validação:** correção coberta com SQLite real em `ArrayBuffer`; atualização online em instalação existente real ainda pendente.
 **Aplicação:** desktop Windows para a gestão financeira do Colégio CELC.  
 **Stack:** JavaScript ESM, HTML/CSS puro, sql.js (SQLite local), Neutralino.js 6.3.0 e instalador NSIS.
 
@@ -52,6 +52,15 @@ Após duas tentativas de atualização reportadas como fracassadas, a correção
 ## Correção do backup — 0.2.10
 
 - O validador converte o `ArrayBuffer` retornado pelo Neutralino para `Uint8Array` antes de validar o SQLite, permitindo backup de bancos válidos com lançamentos.
+- A versão foi publicada, mas reprovada como entrega porque não houve prova do ciclo online completo em uma instalação existente.
+
+## Validação reproduzível e prova online — 0.2.11
+
+- `validarBanco` usa explicitamente o carregador `initSqlJs` disponível no contexto global e fecha o banco de validação após as consultas.
+- `tests/backup.mjs` constrói um SQLite real com as tabelas obrigatórias, fornece o conteúdo como `ArrayBuffer` — o formato efetivamente retornado por `Neutralino.filesystem.readBinaryFile` — e também cobre `Uint8Array`, banco vazio e cabeçalho inválido.
+- O teste inicial de 0.2.11 falhou porque o vetor criado dentro da VM de teste pertencia a outro realm JavaScript; o fixture foi normalizado para o mesmo contexto do Neutralino e a suíte passou com 85 asserções e 39 arquivos UTF-8.
+- Auditoria anterior à prova: instalação ativa com hash de `resources.neu` `721157046F505FD5D4AA46F7CFD52EC5E52894CE3AD8D5A53795104F80F97EA9` (0.2.8), banco externo com hash `F16B1CA039D934431EDF3596AE8E25A34F28A3CF34F20A22FB9BB91D4B39D92F` e manifesto público apontando para 0.2.10.
+- A aceitação exige bootstrap único por troca manual de `resources.neu` para 0.2.10, sem executar o Setup, seguido de atualização online real para 0.2.11 e conferência de backup, log, reinício, versão e preservação do banco.
 
 ## Entregas implementadas
 
@@ -115,16 +124,15 @@ Foi criada a automação `lancamentos:atualizarVencidos`.
 
 ## Versão e distribuição
 
-A versão publicada mais recente é `v0.2.7` no repositório:
+A versão publicada mais recente antes desta preparação é `v0.2.10` no repositório:
 
 `https://github.com/mlopesdesign/celc-financeiro`
 
-A release `v0.2.7` foi publicada com:
+A release `v0.2.10` foi publicada com:
 
-- correção do cálculo/exibição da versão a partir do pacote de recursos;
-- atualizador assistido com download temporário e reabertura do executável;
+- conversão do `ArrayBuffer` do Neutralino antes da validação do banco;
 - bundle `resources.neu` atualizado;
-- instalador `CELC-Financeiro-Setup-0.2.7.exe`;
+- instalador `CELC-Financeiro-Setup-0.2.10.exe`;
 - manifesto de atualização e checksums.
 
 ## Pendências de produto
