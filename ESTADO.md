@@ -1,6 +1,6 @@
 # Estado do projeto — CELC Financeiro
 
-**Versão em preparação:** `0.2.4`
+**Versão em preparação:** `0.2.5`
 **Aplicação:** desktop Windows para a gestão financeira do Colégio CELC.  
 **Stack:** JavaScript ESM, HTML/CSS puro, sql.js (SQLite local), Neutralino.js 6.3.0 e instalador NSIS.
 
@@ -48,6 +48,11 @@ Foi criada a automação `lancamentos:atualizarVencidos`.
 - Ao excluir uma despesa cadastrada paga pelo caixa, o lançamento original volta a pendente ou vencido conforme a data de vencimento; despesas avulsas removem também o lançamento gerado.
 - O script NSIS é salvo com BOM UTF-8, impedindo mensagens corrompidas no instalador Windows.
 
+## Atualização assistida e toast — 0.2.5
+
+- O pacote é baixado para arquivo temporário; o aplicativo fecha, troca `resources.neu` e reabre o executável.
+- O toast de atualização fica acima da barra do Windows e informa descoberta, sucesso ou falha.
+
 ## Decisões técnicas
 
 | Decisão | Motivo |
@@ -65,18 +70,18 @@ A versão anterior publicada é `v0.2.0` no repositório:
 
 `https://github.com/mlopesdesign/celc-financeiro`
 
-A versão `0.2.4` está sendo finalizada com:
+A versão `0.2.5` está sendo finalizada com:
 
 - detalhamento de despesas no Caixa diário;
 - validação UTF-8;
 - bundle `resources.neu` atualizado;
-- instalador `CELC-Financeiro-Setup-0.2.4.exe`;
+- instalador `CELC-Financeiro-Setup-0.2.5.exe`;
 - manifesto de atualização e checksums.
 
 ## Pendências de produto
 
 1. Validar em uma máquina limpa o ciclo completo: instalar, registrar lançamentos, fechar e reabrir.
-2. Publicar a release `v0.2.4` com os quatro anexos: Setup, `resources.neu`, `latest.json` e `SHA256SUMS.txt`.
+2. Publicar a release `v0.2.5` com os quatro anexos: Setup, `resources.neu`, `latest.json` e `SHA256SUMS.txt`.
 3. Validar a atualização online partindo da nova instalação `v0.2.4` para a próxima release, usando o canal nativo.
 4. Definir o fluxo operacional mensal para conferência de caixa, inadimplência e relatórios pela direção.
 

@@ -3,7 +3,7 @@ import {garantirAcesso,validarAcesso} from './auth.js';
 import {criarApi} from './backend/servidor.js';
 import {verificarAtualizacao,instalarAtualizacao} from './backend/atualizador.js';
 
-const APP_VERSION='0.2.4';
+const APP_VERSION='0.2.5';
 const hoje=new Date().toISOString().slice(0,10);
 const $=seletor=>document.querySelector(seletor);
 const $$=seletor=>Array.from(document.querySelectorAll(seletor));
@@ -34,7 +34,7 @@ const telas={
 
 function aviso(texto,erro=false){
   const toast=document.createElement('div');
-  toast.className='toast-celc show'+(erro?' erro':'');
+  toast.className='toast-celc show'+(erro?' erro':'');toast.setAttribute('role','alert');toast.setAttribute('aria-live','assertive');
   toast.innerHTML=`<b>${erro?'Atenção':'CELC Financeiro'}</b><span>${esc(texto)}</span>`;
   document.body.append(toast);
   setTimeout(()=>toast.remove(),4200);
@@ -315,12 +315,14 @@ function ligarEventos(){
     $('#statusAtualizacao').textContent=resposta.ok?(resposta.disponivel?`Nova versão ${resposta.atualizacao.version} disponível.`:resposta.mensagem):resposta.erro;
     $('#instalar').disabled=!resposta.disponivel;
     $('#instalar').dataset.disponivel=resposta.disponivel?'1':'0';
+    aviso(resposta.ok?(resposta.disponivel?`Atualização ${resposta.atualizacao.version} encontrada. Clique em Instalar atualização.`:resposta.mensagem):resposta.erro,!resposta.ok);
   });
   $('#instalar')&&($('#instalar').onclick=async evento=>{
     if(evento.currentTarget.dataset.disponivel!=='1')return;
     const versao=(await window.Neutralino?.app?.getConfig?.().catch(()=>null))?.version||APP_VERSION;
     const resposta=await instalarAtualizacao(window.Neutralino,banco,versao);
-    aviso(resposta.ok?'Atualização instalada. Reinicie o sistema.':resposta.erro,!resposta.ok);
+    $('#statusAtualizacao').textContent=resposta.ok?'Atualização baixada. O sistema será fechado e reaberto automaticamente.':resposta.erro;
+    if(!resposta.ok)aviso(resposta.erro,true);
   });
 }
 

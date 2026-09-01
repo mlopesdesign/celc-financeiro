@@ -1,6 +1,6 @@
 # Instalação profissional — CELC Financeiro
 
-O arquivo `CELC-Financeiro-Setup-0.2.4.exe` é a distribuição oficial para Windows 10/11 x64.
+O arquivo `CELC-Financeiro-Setup-0.2.5.exe` é a distribuição oficial para Windows 10/11 x64.
 
 ## O que o Setup faz
 
