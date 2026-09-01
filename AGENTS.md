@@ -1,6 +1,22 @@
 # CELC Financeiro — instruções do projeto
 
-Leia este arquivo e `GRAPHIFY.md` antes de qualquer alteração estrutural.
+Leia este arquivo, `ESTADO.md` e `GRAPHIFY.md` antes de qualquer alteração estrutural.
+
+## Regra obrigatória permanente — fluxo de trabalho
+
+O fluxo abaixo é obrigatório sempre, para toda tarefa, correção, evolução, ajuste visual, auditoria com correção ou atualização do CELC Financeiro. Não é opcional, não depende de novo pedido e não pode ser encurtado. Nenhuma tarefa de alteração está concluída, e nenhuma resposta final pode afirmar entrega, antes de todos os itens abaixo estarem concluídos e verificados.
+
+1. Implementar a funcionalidade completa, sem placeholders, botões inativos ou regressões.
+2. Executar todos os testes automatizados, validações de sintaxe e validação UTF-8.
+3. Atualizar `ESTADO.md`, testes e `GRAPHIFY.md` quando a estrutura for afetada.
+4. Incrementar a versão em `neutralino.config.json`, `package.json`, `src/js/app.js`, `src/js/backend/ambiente.js` e `installer/CELC-Financeiro-Setup.nsi`.
+5. Gerar `dist/CELC Financeiro/resources.neu` e confirmar que ele contém a nova versão.
+6. Gerar e testar o instalador `CELC-Financeiro-Setup-X.Y.Z.exe`.
+7. Preparar `Release/vX.Y.Z/` com Setup, `resources.neu`, `latest.json`, `SHA256SUMS.txt` e `RELEASE.md`.
+8. Criar commit, tag anotada, enviar para `main` e publicar a GitHub Release com os quatro anexos.
+9. Somente então informar ao cliente: versão, commit, tag, link da release, caminhos locais e hashes SHA-256.
+
+Se algum item falhar, a tarefa permanece em execução: corrigir, retestar e retomar do item pendente. Não pedir ao cliente para executar etapas que estejam dentro desse fluxo. Esta regra prevalece sobre qualquer interpretação de “entrega parcial”, “já está pronto” ou encerramento antecipado.
 
 ## Identidade imutável
 
@@ -12,7 +28,7 @@ Leia este arquivo e `GRAPHIFY.md` antes de qualquer alteração estrutural.
 | binaryName | `CELC Financeiro.exe` |
 | Pasta de dados | `%APPDATA%\CELC Financeiro\dados` |
 | Banco | `celc-financeiro.db` |
-| Repositório | A definir antes da primeira release |
+| Repositório | `mlopesdesign/celc-financeiro` |
 
 Não altere `applicationId`, `binaryName`, a pasta de dados ou o nome do banco após a primeira distribuição. Esses valores são a identidade da instalação e da atualização online.
 

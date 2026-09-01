@@ -3,6 +3,7 @@ dist/
 Portable/
 Release/
 tools/release/
+Lixeira/
 *.log
 *.tmp
 *.old

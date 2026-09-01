@@ -1,6 +1,6 @@
 # Estado do projeto — CELC Financeiro
 
-**Versão em preparação:** `0.2.2`  
+**Versão em preparação:** `0.2.3`
 **Aplicação:** desktop Windows para a gestão financeira do Colégio CELC.  
 **Stack:** JavaScript ESM, HTML/CSS puro, sql.js (SQLite local), Neutralino.js 6.3.0 e instalador NSIS.
 
@@ -35,6 +35,13 @@ Foi criada a automação `lancamentos:atualizarVencidos`.
 - A despesa detalhada entra no caixa e atualiza o lançamento original para `pago`, sem duplicar a movimentação.
 - `tests/utf8.mjs` valida todos os arquivos textuais de código e documentação como UTF-8 e bloqueia sequências de codificação corrompida.
 
+## Atualização online nativa — 0.2.3
+
+- A consulta do manifesto e o download de `resources.neu` são executados pelo `curl.exe` do Windows através da API nativa do Neutralino.
+- A tela não depende mais de `fetch` do WebView2 nem das regras CORS do GitHub.
+- A instalação preserva o fluxo seguro: persistência do banco, backup obrigatório, troca apenas de `resources.neu` e reinício do aplicativo.
+- A versão `0.2.2` publicada permanece preservada como histórico; a correção segue em nova versão, sem sobrescrever artefatos já distribuídos.
+
 ## Decisões técnicas
 
 | Decisão | Motivo |
@@ -52,21 +59,21 @@ A versão anterior publicada é `v0.2.0` no repositório:
 
 `https://github.com/mlopesdesign/celc-financeiro`
 
-A versão `0.2.2` está sendo finalizada com:
+A versão `0.2.3` está sendo finalizada com:
 
 - detalhamento de despesas no Caixa diário;
 - validação UTF-8;
 - bundle `resources.neu` atualizado;
-- instalador `CELC-Financeiro-Setup-0.2.2.exe`;
+- instalador `CELC-Financeiro-Setup-0.2.3.exe`;
 - manifesto de atualização e checksums.
 
 ## Pendências de produto
 
 1. Validar em uma máquina limpa o ciclo completo: instalar, registrar lançamentos, fechar e reabrir.
-2. Publicar a release `v0.2.2` com os quatro anexos: Setup, `resources.neu`, `latest.json` e `SHA256SUMS.txt`.
-3. Testar a atualização online partindo de uma instalação `v0.2.1`.
+2. Publicar a release `v0.2.3` com os quatro anexos: Setup, `resources.neu`, `latest.json` e `SHA256SUMS.txt`.
+3. Validar a atualização online partindo da nova instalação `v0.2.3` para a próxima release, usando o canal nativo.
 4. Definir o fluxo operacional mensal para conferência de caixa, inadimplência e relatórios pela direção.
 
 ## Regra de continuidade
 
-Nenhuma alteração é entregue sem: testes automatizados, incremento de versão, geração de `resources.neu`, instalador, checksums, commit, tag e dados de publicação no GitHub.
+O fluxo completo é obrigatório sempre. Nenhuma alteração, correção, ajuste visual ou evolução é entregue sem: testes automatizados, validação UTF-8, incremento de versão, geração de `resources.neu`, instalador, checksums, commit, tag, push, GitHub Release e dados finais de publicação. Se qualquer etapa falhar, o trabalho continua até a correção e validação.

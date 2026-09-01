@@ -4,13 +4,13 @@ O CELC Financeiro usa o atualizador nativo do Neutralino e substitui somente `re
 
 ## Manifesto de uma release
 
-Publique no GitHub Releases o arquivo `latest.json` produzido em `Release/vX.Y.Z/`. Para a v0.2.2, o manifesto é:
+Publique no GitHub Releases o arquivo `latest.json` produzido em `Release/vX.Y.Z/`. Para a v0.2.3, o manifesto é:
 
 ```json
 {
   "applicationId": "com.mllopesdesign.celcfinanceiro",
-  "version": "0.2.2",
-  "resourcesURL": "https://github.com/mlopesdesign/celc-financeiro/releases/download/v0.2.2/resources.neu"
+  "version": "0.2.3",
+  "resourcesURL": "https://github.com/mlopesdesign/celc-financeiro/releases/download/v0.2.3/resources.neu"
 }
 ```
 

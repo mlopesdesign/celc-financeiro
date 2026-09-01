@@ -27,6 +27,9 @@
 | `painel:resumo` | src/js/app.js |
 | `lancamentos:listar` | src/js/app.js |
 | `caixa:resumo` | src/js/app.js |
+| `caixa:registrar` | src/js/app.js |
+| `lancamentos:listar` | src/js/app.js |
+| `caixa:pagarDespesa` | src/js/app.js |
 | `devedores:listar` | src/js/app.js |
 | `devedores:baixar` | src/js/app.js |
 | `categorias:listar` | src/js/app.js |
@@ -51,6 +54,7 @@
 | `lancamentos:editar` | src/js/app.js |
 | `lancamentos:criar` | src/js/app.js |
 | `lancamentos:recorrencias` | src/js/app.js |
+| `lancamentos:atualizarVencidos` | src/js/app.js |
 | `painel:resumo` | src/js/backend/servidor.js |
 | `lancamentos:listar` | src/js/backend/servidor.js |
 | `lancamentos:criar` | src/js/backend/servidor.js |
@@ -58,9 +62,11 @@
 | `lancamentos:baixar` | src/js/backend/servidor.js |
 | `lancamentos:excluir` | src/js/backend/servidor.js |
 | `lancamentos:recorrencias` | src/js/backend/servidor.js |
+| `lancamentos:atualizarVencidos` | src/js/backend/servidor.js |
 | `caixa:resumo` | src/js/backend/servidor.js |
 | `caixa:listar` | src/js/backend/servidor.js |
 | `caixa:registrar` | src/js/backend/servidor.js |
+| `caixa:pagarDespesa` | src/js/backend/servidor.js |
 | `devedores:listar` | src/js/backend/servidor.js |
 | `devedores:registrar` | src/js/backend/servidor.js |
 | `devedores:baixar` | src/js/backend/servidor.js |
