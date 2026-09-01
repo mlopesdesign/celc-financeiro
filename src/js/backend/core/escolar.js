@@ -23,6 +23,20 @@ export function resumirCaixaDiario(db,{data=''}={}){
   return {itens,receitas,despesas,saldo:receitas-despesas,porOrigem,quantidade:itens.length};
 }
 
+export async function pagarDespesaNoCaixa(db,dados,u={id:'direcao-celc'}){
+  const id=texto(dados.id),data=texto(dados.data)||agora().slice(0,10),forma=texto(dados.formaPagamento)||'Dinheiro',item=db.listarLancamentos().find(x=>x.id===id);
+  if(!item)return {ok:false,erro:'Despesa cadastrada não encontrada.'};
+  if(item.tipo!=='despesa')return {ok:false,erro:'Somente despesas podem ser registradas no caixa.'};
+  if(item.situacao==='pago'||item.liquidadoEm)return {ok:false,erro:'Esta despesa já foi paga.'};
+  if(!/^\d{4}-\d{2}-\d{2}$/.test(data))return {ok:false,erro:'Informe a data do pagamento.'};
+  if(db.listarCaixaDiario().some(x=>x.lancamentoId===id))return {ok:false,erro:'Esta despesa já está detalhada no caixa.'};
+  const t=agora(),caixaId=db.proximoId('caixa');
+  await db.executar('UPDATE lancamentos SET situacao=?,liquidado_em=?,atualizado_em=? WHERE id=?',['pago',`${data}T12:00:00.000Z`,t,id]);
+  await db.executar('INSERT INTO caixa_diario (id,data,tipo,origem,aluno,responsavel,forma_pagamento,valor_centavos,observacao,lancamento_id,criado_em,usuario_id) VALUES (?,?,?,?,?,?,?,?,?,?,?,?)',[caixaId,data,'despesa',item.descricao,'','',forma,item.valorCentavos,texto(dados.observacao),id,t,u.id]);
+  await db.executar('INSERT INTO auditoria (usuario_id,acao,entidade,entidade_id,criado_em,detalhes) VALUES (?,?,?,?,?,?)',[u.id,'pagar_despesa_caixa','caixa_diario',caixaId,t,item.descricao]);
+  return {ok:true,caixaId,lancamentoId:id};
+}
+
 export async function registrarDevedor(db,dados,u={id:'direcao-celc'}){
   const aluno=texto(dados.aluno),descricao=texto(dados.descricao),vencimento=texto(dados.vencimento),valor=valorCentavos(dados.valorCentavos),t=agora(),id=db.proximoId('dev');
   if(!aluno)return {ok:false,erro:'Informe o nome do aluno.'};

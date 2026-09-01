@@ -3,7 +3,7 @@ import {garantirAcesso,validarAcesso} from './auth.js';
 import {criarApi} from './backend/servidor.js';
 import {verificarAtualizacao,instalarAtualizacao} from './backend/atualizador.js';
 
-const APP_VERSION='0.2.1';
+const APP_VERSION='0.2.2';
 const hoje=new Date().toISOString().slice(0,10);
 const $=seletor=>document.querySelector(seletor);
 const $$=seletor=>Array.from(document.querySelectorAll(seletor));
@@ -18,7 +18,6 @@ let edicao=null;
 let categoriaEmEdicao=null;
 let relatorioAba='geral';
 let periodoRelatorio={inicio:`${hoje.slice(0,7)}-01`,fim:hoje};
-let detalheCaixa={};
 
 const telas={
   dashboard:{rotulo:'PAINEL FINANCEIRO',titulo:'Visão geral',subtitulo:'Acompanhe a saúde financeira do Colégio CELC.',montar:dashboard},
@@ -66,18 +65,32 @@ async function lista(tipo,situacoes){
 }
 
 function tabelaCaixa(itens){
-  return `<div class="table-wrap"><table><thead><tr><th>DATA</th><th>TIPO</th><th>DETALHE</th><th>RECEITAS</th><th>DESPESAS</th></tr></thead><tbody>${itens.map(x=>`<tr><td>${dataPt(x.data)}</td><td><span class="type-badge ${x.tipo||'entrada'}">${(x.tipo||'entrada')==='entrada'?'receita':'despesa'}</span></td><td><div class="title-stack"><b>${esc(x.origem||'Fechamento diário')}</b>${x.observacao?`<small>${esc(x.observacao)}</small>`:''}</div></td><td class="amount in">${(x.tipo||'entrada')==='entrada'?brl(x.valorCentavos):'-'}</td><td class="amount out">${x.tipo==='despesa'?brl(x.valorCentavos):'-'}</td></tr>`).join('')||'<tr><td colspan="5" class="empty">Nenhum fechamento registrado neste caixa.</td></tr>'}</tbody></table></div>`;
+  return `<div class="table-wrap"><table><thead><tr><th>DATA</th><th>TIPO</th><th>DETALHE</th><th>RECEITAS</th><th>DESPESAS</th></tr></thead><tbody>${itens.map(x=>`<tr><td>${dataPt(x.data)}</td><td><span class="type-badge ${x.tipo||'entrada'}">${(x.tipo||'entrada')==='entrada'?'receita':'despesa'}</span></td><td><div class="title-stack"><b>${esc(x.origem||'Fechamento diário')}</b><small>${esc(x.formaPagamento||'Dinheiro')}${x.observacao?` · ${esc(x.observacao)}`:''}</small></div></td><td class="amount in">${(x.tipo||'entrada')==='entrada'?brl(x.valorCentavos):'-'}</td><td class="amount out">${x.tipo==='despesa'?brl(x.valorCentavos):'-'}</td></tr>`).join('')||'<tr><td colspan="5" class="empty">Nenhum fechamento registrado neste caixa.</td></tr>'}</tbody></table></div>`;
 }
 
 async function caixaDiario(){
   const resumo=await api('caixa:resumo',{data:hoje});
-  return `<section class="content-grid"><article class="panel"><h3>Fechamento do caixa diário</h3><p class="subtitle">Informe os totais recebidos e os pagamentos efetivamente feitos no dia. O detalhamento é opcional.</p><form id="formCaixa" class="stack wide-form"><div class="two-columns"><label>Data<input name="data" type="date" value="${hoje}" required></label><label>Receitas recebidas (R$)<input name="receita" type="number" step="0.01" min="0" placeholder="0,00"></label></div><label>Pagamentos feitos no dia (R$)<input name="despesa" type="number" step="0.01" min="0" placeholder="0,00"></label><button class="outline-button" id="abrirDetalhamento" type="button">Detalhar movimentações</button><button class="primary-action">Salvar fechamento diário</button></form></article><article class="panel"><h3>Resumo do dia</h3><div class="metric-strip school-metrics"><span>Receitas <b>${brl(resumo.receitas)}</b></span><span>Pagamentos <b>${brl(resumo.despesas)}</b></span><span>Saldo do dia <b>${brl(resumo.saldo)}</b></span></div><p class="subtitle">${resumo.quantidade} registro(s) financeiro(s) no fechamento de ${dataPt(hoje)}.</p></article></section><section class="panel"><div class="panel-heading"><div><h3>Movimentação do caixa</h3><p>${dataPt(hoje)}</p></div></div>${tabelaCaixa(resumo.itens)}</section>`;
+  return `<section class="content-grid"><article class="panel"><h3>Fechamento do caixa diário</h3><p class="subtitle">Registre receitas e apenas despesas sem detalhamento. Use o detalhamento para localizar pagamentos já cadastrados ou incluir uma despesa pontual.</p><form id="formCaixa" class="stack wide-form"><div class="two-columns"><label>Data<input name="data" type="date" value="${hoje}" required></label><label>Receitas recebidas (R$)<input name="receita" type="number" step="0.01" min="0" placeholder="0,00"></label></div><label>Despesas sem detalhamento (R$)<input name="despesa" type="number" step="0.01" min="0" placeholder="0,00"></label><button class="outline-button" id="abrirDetalhamento" type="button">Detalhar despesas</button><button class="primary-action">Salvar fechamento diário</button></form></article><article class="panel"><h3>Resumo do dia</h3><div class="metric-strip school-metrics"><span>Receitas <b>${brl(resumo.receitas)}</b></span><span>Pagamentos <b>${brl(resumo.despesas)}</b></span><span>Saldo do dia <b>${brl(resumo.saldo)}</b></span></div><p class="subtitle">${resumo.quantidade} registro(s) financeiro(s) no fechamento de ${dataPt(hoje)}.</p></article></section><section class="panel"><div class="panel-heading"><div><h3>Movimentação do caixa</h3><p>${dataPt(hoje)}</p></div></div>${tabelaCaixa(resumo.itens)}</section>`;
 }
 
-function abrirDetalhamentoCaixa(){
+async function abrirDetalhamentoCaixa(){
   let modal=$('#modalDetalhamentoCaixa');
-  if(!modal){modal=document.createElement('div');modal.className='modal-backdrop';modal.id='modalDetalhamentoCaixa';modal.innerHTML=`<form class="modal stack" id="formDetalhamentoCaixa"><p class="eyebrow">CAIXA DIÁRIO</p><h2>Detalhamento opcional</h2><label>Referência<input name="origem" placeholder="Ex.: cantina, transporte, pequenos gastos"></label><div class="two-columns"><label>Aluno<input name="aluno"></label><label>Responsável<input name="responsavel"></label></div><label>Forma de pagamento<select name="formaPagamento"><option value="">Não informar</option><option>Dinheiro</option><option>Pix</option><option>Cartão</option><option>Boleto</option><option>Transferência</option></select></label><label>Observação<input name="observacao" placeholder="Anotação interna"></label><div class="row-actions"><button class="outline-button" id="cancelarDetalhamento" type="button">Cancelar</button><button class="primary-action" type="submit">Aplicar detalhes</button></div></form>`;document.body.append(modal);$('#cancelarDetalhamento').onclick=()=>modal.classList.remove('show');modal.onclick=evento=>{if(evento.target===modal)modal.classList.remove('show')};$('#formDetalhamentoCaixa').onsubmit=evento=>{evento.preventDefault();detalheCaixa=Object.fromEntries(new FormData(evento.currentTarget));modal.classList.remove('show');aviso('Detalhamento aplicado ao fechamento.');};}
-  const form=$('#formDetalhamentoCaixa');Object.entries(detalheCaixa).forEach(([chave,valor])=>{if(form.elements[chave])form.elements[chave].value=valor;});modal.classList.add('show');
+  if(!modal){
+    modal=document.createElement('div');modal.className='modal-backdrop';modal.id='modalDetalhamentoCaixa';
+    modal.innerHTML=`<section class="modal stack caixa-detalhamento"><button type="button" class="close" id="fecharDetalhamento">×</button><p class="eyebrow">CAIXA DIÁRIO</p><h2>Detalhar despesas</h2><p class="subtitle">Localize despesas cadastradas, inclusive pagamentos fixos, ou registre uma despesa pontual. O pagamento padrão é em dinheiro.</p><label>Buscar despesa cadastrada<input id="buscaDespesaCaixa" placeholder="Descrição ou categoria"></label><div id="resultadosDespesaCaixa" class="expense-search-results"></div><hr class="form-separator"><h3>Despesa não cadastrada</h3><form id="formDespesaAvulsaCaixa" class="stack"><label>Descrição<input name="origem" placeholder="Ex.: compra emergencial de material" required></label><div class="two-columns"><label>Valor (R$)<input name="valor" type="number" min="0.01" step="0.01" required></label><label>Pagamento<select name="formaPagamento"><option selected>Dinheiro</option><option>Pix</option><option>Cartão</option><option>Boleto</option><option>Transferência</option></select></label></div><label>Observação opcional<input name="observacao" placeholder="Anotação interna"></label><div class="row-actions"><button class="outline-button" id="fecharDetalhamentoSecundario" type="button">Fechar</button><button class="primary-action" type="submit">Registrar despesa no caixa</button></div></form></section>`;
+    document.body.append(modal);
+    const fechar=()=>modal.classList.remove('show');$('#fecharDetalhamento').onclick=fechar;$('#fecharDetalhamentoSecundario').onclick=fechar;modal.onclick=evento=>{if(evento.target===modal)fechar()};
+    $('#buscaDespesaCaixa').oninput=()=>listarDespesasDoCaixa();
+    $('#formDespesaAvulsaCaixa').onsubmit=async evento=>{evento.preventDefault();const dados=Object.fromEntries(new FormData(evento.currentTarget)),resposta=await api('caixa:registrar',{data:modal.dataset.data,origem:dados.origem,formaPagamento:dados.formaPagamento,observacao:dados.observacao,despesasCentavos:Math.round(Number(dados.valor)*100)});aviso(resposta.ok?'Despesa pontual registrada no caixa.':resposta.erro,!resposta.ok);if(resposta.ok){fechar();render();}};
+  }
+  modal.dataset.data=$('#formCaixa')?.data.value||hoje;modal.classList.add('show');await listarDespesasDoCaixa();
+}
+
+async function listarDespesasDoCaixa(){
+  const modal=$('#modalDetalhamentoCaixa'),alvo=$('#resultadosDespesaCaixa');if(!modal||!alvo)return;
+  const busca=$('#buscaDespesaCaixa')?.value||'',itens=(await api('lancamentos:listar',{tipo:'despesa',busca})).filter(item=>!liquidado(item));
+  alvo.innerHTML=itens.slice(0,8).map(item=>`<article class="expense-search-result"><div><b>${esc(item.descricao)}</b><small>${esc(item.categoria)}${item.recorrencia==='mensal'?' · Pagamento fixo mensal':''} · ${dataPt(item.vencimento||item.competencia)}</small></div><div><strong>${brl(item.valorCentavos)}</strong><button class="text-button" data-pagar-despesa-caixa="${esc(item.id)}">Registrar pagamento</button></div></article>`).join('')||'<p class="subtitle">Nenhuma despesa em aberto encontrada.</p>';
+  $$('[data-pagar-despesa-caixa]').forEach(botao=>botao.onclick=async()=>{const resposta=await api('caixa:pagarDespesa',{id:botao.dataset.pagarDespesaCaixa,data:modal.dataset.data,formaPagamento:$('#formDespesaAvulsaCaixa').formaPagamento.value||'Dinheiro'});aviso(resposta.ok?'Despesa cadastrada paga e incluída no caixa.':resposta.erro,!resposta.ok);if(resposta.ok){modal.classList.remove('show');render();}});
 }
 
 function tabelaDevedores(itens){
@@ -234,9 +247,9 @@ function ligarEventos(){
   $('#formCaixa')&&($('#formCaixa').onsubmit=async evento=>{
     evento.preventDefault();
     const dados=Object.fromEntries(new FormData(evento.currentTarget));
-    const resposta=await api('caixa:registrar',{...dados,...detalheCaixa,receitasCentavos:Math.round(Number(dados.receita||0)*100),despesasCentavos:Math.round(Number(dados.despesa||0)*100)});
+    const resposta=await api('caixa:registrar',{...dados,formaPagamento:'Dinheiro',receitasCentavos:Math.round(Number(dados.receita||0)*100),despesasCentavos:Math.round(Number(dados.despesa||0)*100)});
     aviso(resposta.ok?'Fechamento diário registrado.':resposta.erro,!resposta.ok);
-    if(resposta.ok){detalheCaixa={};render();}
+    if(resposta.ok)render();
   });
   $('#abrirDetalhamento')&&($('#abrirDetalhamento').onclick=abrirDetalhamentoCaixa);
   $('#formDevedor')&&($('#formDevedor').onsubmit=async evento=>{

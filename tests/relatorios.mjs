@@ -8,9 +8,10 @@ const lancamentos=[
   {id:'4',descricao:'Energia',tipo:'despesa',categoria:'Serviços e utilidades',valorCentavos:2000,competencia:'2026-08-15',situacao:'pendente',liquidadoEm:null},
   {id:'5',descricao:'Fora do período',tipo:'entrada',categoria:'Matrículas',valorCentavos:9000,competencia:'2026-07-31',situacao:'recebido',liquidadoEm:'2026-07-31T10:00:00.000Z'}
 ];
+const hoje=new Date(),ontem=new Date(hoje);ontem.setDate(hoje.getDate()-1);const amanha=new Date(hoje);amanha.setDate(hoje.getDate()+1);const dataIso=data=>data.toISOString().slice(0,10);
 const devedores=[
-  {aluno:'Carla',situacao:'em_aberto',vencimento:'2026-08-20',valorCentavos:4000},
-  {aluno:'Diego',situacao:'em_aberto',vencimento:'2026-08-30',valorCentavos:2500},
+  {aluno:'Carla',situacao:'em_aberto',vencimento:dataIso(ontem),valorCentavos:4000},
+  {aluno:'Diego',situacao:'em_aberto',vencimento:dataIso(amanha),valorCentavos:2500},
   {aluno:'Elisa',situacao:'quitado',vencimento:'2026-08-15',valorCentavos:8000}
 ];
 const relatorio=resumirRelatorios({listarLancamentos:()=>lancamentos,listarDevedores:()=>devedores},{inicio:'2026-08-01',fim:'2026-08-31'});

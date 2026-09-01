@@ -1,6 +1,6 @@
 # Estado do projeto — CELC Financeiro
 
-**Versão em preparação:** `0.2.1`  
+**Versão em preparação:** `0.2.2`  
 **Aplicação:** desktop Windows para a gestão financeira do Colégio CELC.  
 **Stack:** JavaScript ESM, HTML/CSS puro, sql.js (SQLite local), Neutralino.js 6.3.0 e instalador NSIS.
 
@@ -27,6 +27,14 @@ Foi criada a automação `lancamentos:atualizarVencidos`.
 - Cada alteração automática é registrada na auditoria.
 - A cobertura automatizada está em `tests/vencidos.mjs`.
 
+## Caixa diário e UTF-8 — 0.2.2
+
+- O detalhamento de despesas não solicita aluno ou responsável.
+- Despesas cadastradas podem ser encontradas por descrição ou categoria, incluindo pagamentos fixos mensais, e pagas diretamente no Caixa diário.
+- Despesas não cadastradas recebem descrição, valor e forma de pagamento; o padrão é `Dinheiro`.
+- A despesa detalhada entra no caixa e atualiza o lançamento original para `pago`, sem duplicar a movimentação.
+- `tests/utf8.mjs` valida todos os arquivos textuais de código e documentação como UTF-8 e bloqueia sequências de codificação corrompida.
+
 ## Decisões técnicas
 
 | Decisão | Motivo |
@@ -44,19 +52,19 @@ A versão anterior publicada é `v0.2.0` no repositório:
 
 `https://github.com/mlopesdesign/celc-financeiro`
 
-A versão `0.2.1` está sendo finalizada com:
+A versão `0.2.2` está sendo finalizada com:
 
-- automação de vencidos;
-- ícone próprio nos atalhos e no instalador;
+- detalhamento de despesas no Caixa diário;
+- validação UTF-8;
 - bundle `resources.neu` atualizado;
-- instalador `CELC-Financeiro-Setup-0.2.1.exe`;
+- instalador `CELC-Financeiro-Setup-0.2.2.exe`;
 - manifesto de atualização e checksums.
 
 ## Pendências de produto
 
 1. Validar em uma máquina limpa o ciclo completo: instalar, registrar lançamentos, fechar e reabrir.
-2. Publicar a release `v0.2.1` com os quatro anexos: Setup, `resources.neu`, `latest.json` e `SHA256SUMS.txt`.
-3. Testar a atualização online partindo de uma instalação `v0.2.0`.
+2. Publicar a release `v0.2.2` com os quatro anexos: Setup, `resources.neu`, `latest.json` e `SHA256SUMS.txt`.
+3. Testar a atualização online partindo de uma instalação `v0.2.1`.
 4. Definir o fluxo operacional mensal para conferência de caixa, inadimplência e relatórios pela direção.
 
 ## Regra de continuidade
