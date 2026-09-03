@@ -1,6 +1,6 @@
 # Estado do projeto — CELC Financeiro
 
-**Versão em preparação:** `0.2.13`
+**Versão em preparação:** `0.2.14`
 **Estado de validação:** correção do Caixa diário coberta pela suíte; atualização online em instalação existente real ainda pendente até a publicação desta preparação.
 **Aplicação:** desktop Windows para a gestão financeira do Colégio CELC.  
 **Stack:** JavaScript ESM, HTML/CSS puro, sql.js (SQLite local), Neutralino.js 6.3.0 e instalador NSIS.
@@ -73,6 +73,11 @@ Após duas tentativas de atualização reportadas como fracassadas, a correção
 - O atualizador usa agora a identidade imutável `${NL_PATH}\\CELC Financeiro.exe`, sem consultar uma chave inexistente, e o teste impede a reintrodução de `exe` como pasta conhecida.
 - Erros anteriores ao fechamento passam a exibir o código ou a mensagem técnica junto da garantia de permanência na versão atual.
 - A prova online final foi redirecionada para 0.2.10 → 0.2.13; o rodapé mostra a versão a partir da mesma constante do atualizador.
+
+## Aplicador desacoplado — 0.2.14
+
+- O fluxo de atualização segue a implementação já validada no Salgueiro: grava `resources.neu.new`, cria um script PowerShell temporário com rollback para `resources.neu.bak`, dispara-o por `cmd.exe /d /c start` desacoplado do processo principal, aguarda o fechamento, troca o pacote e reabre o executável por `NL_PATH`.
+- O teste cobre explicitamente o comando desacoplado; a versão 0.2.13 permanece imutável como histórico e a correção segue em nova versão.
 
 ## Caixa diário com competência — 0.2.13
 

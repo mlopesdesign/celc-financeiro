@@ -1,1 +1,1 @@
-export async function dadosDoAmbiente(Neutralino,banco){return {modo:banco.modo,pastaDados:banco.caminho?banco.caminho.slice(0,banco.caminho.lastIndexOf('\\')):'Prévia local',versao:(await Neutralino?.app?.getConfig?.())?.version||'0.2.13'};}
+export async function dadosDoAmbiente(Neutralino,banco){return {modo:banco.modo,pastaDados:banco.caminho?banco.caminho.slice(0,banco.caminho.lastIndexOf('\\')):'Prévia local',versao:(await Neutralino?.app?.getConfig?.())?.version||'0.2.14'};}

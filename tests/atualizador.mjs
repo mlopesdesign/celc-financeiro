@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import { compararVersoes } from '../src/js/backend/core/atualizador.js';
-import { caminhoExecutavelAtualizacao, verificarAtualizacao } from '../src/js/backend/atualizador.js';
+import { caminhoExecutavelAtualizacao, comandoAplicadorAtualizacao, verificarAtualizacao } from '../src/js/backend/atualizador.js';
 assert.equal(compararVersoes('0.1.4','0.1.5'),1);
 assert.equal(compararVersoes('v1.2.0','1.2.0'),0);
 assert.equal(compararVersoes('2.10.0','2.9.9'),-1);
@@ -29,4 +29,7 @@ assert.equal(manifestoInvalido.ok,false);
 assert.equal(caminhoExecutavelAtualizacao('C:\\Apps\\CELC Financeiro'),'C:\\Apps\\CELC Financeiro\\CELC Financeiro.exe');
 assert.equal(caminhoExecutavelAtualizacao('C:\\Apps\\CELC Financeiro\\'),'C:\\Apps\\CELC Financeiro\\CELC Financeiro.exe');
 assert.throws(()=>caminhoExecutavelAtualizacao(''),/Pasta do aplicativo indisponível/);
-console.log('13 asserções aprovadas — comparação, consulta nativa e caminho do executável.');
+assert.match(comandoAplicadorAtualizacao('C:\\Apps\\CELC Financeiro\\aplicar-atualizacao.ps1'),/cmd\.exe \/d \/c start "" \/min powershell\.exe/);
+assert.match(comandoAplicadorAtualizacao('C:\\Apps\\CELC Financeiro\\aplicar-atualizacao.ps1'),/-File "C:\\Apps\\CELC Financeiro\\aplicar-atualizacao\.ps1"/);
+assert.throws(()=>comandoAplicadorAtualizacao(''),/Script do aplicador indisponível/);
+console.log('16 asserções aprovadas — comparação, consulta nativa, caminho do executável e aplicador desacoplado.');
