@@ -1,7 +1,7 @@
 # Estado do projeto — CELC Financeiro
 
-**Versão em preparação:** `0.2.12`
-**Estado de validação:** correção coberta com SQLite real em `ArrayBuffer`; atualização online em instalação existente real ainda pendente.
+**Versão em preparação:** `0.2.13`
+**Estado de validação:** correção do Caixa diário coberta pela suíte; atualização online em instalação existente real ainda pendente até a publicação desta preparação.
 **Aplicação:** desktop Windows para a gestão financeira do Colégio CELC.  
 **Stack:** JavaScript ESM, HTML/CSS puro, sql.js (SQLite local), Neutralino.js 6.3.0 e instalador NSIS.
 
@@ -66,6 +66,20 @@ Após duas tentativas de atualização reportadas como fracassadas, a correção
 
 - O rodapé da barra lateral exibe permanentemente `Versão 0.2.12`, usando a mesma constante do atualizador e da tela de Configurações.
 - A prova online final passa a usar 0.2.10 como base corrigida e 0.2.12 como alvo público; a release intermediária 0.2.11 permanece imutável no histórico.
+
+## Caminho correto do reinício — 0.2.13
+
+- A prova 0.2.10 → 0.2.12 confirmou backup e download íntegros, mas reprovou antes do fechamento porque `Neutralino.os.getPath('exe')` não é uma chave válida da API.
+- O atualizador usa agora a identidade imutável `${NL_PATH}\\CELC Financeiro.exe`, sem consultar uma chave inexistente, e o teste impede a reintrodução de `exe` como pasta conhecida.
+- Erros anteriores ao fechamento passam a exibir o código ou a mensagem técnica junto da garantia de permanência na versão atual.
+- A prova online final foi redirecionada para 0.2.10 → 0.2.13; o rodapé mostra a versão a partir da mesma constante do atualizador.
+
+## Caixa diário com competência — 0.2.13
+
+- O detalhamento consulta todas as despesas cadastradas em aberto, sem truncar a lista; descrição, categoria, funcionário, terceirizado e pagamentos fixos podem ser localizados pelo mesmo campo de busca.
+- Despesas cadastradas e avulsas exibem um dropdown de mês de referência, iniciado no mês corrente e com os 23 meses anteriores disponíveis.
+- O backend grava a competência escolhida no lançamento e no `caixa_diario`, mantendo a data real do pagamento separada da competência financeira; meses inválidos são rejeitados antes de qualquer gravação.
+- A coluna `competencia` de `caixa_diario` recebe migração segura em bancos existentes e passa a aparecer no detalhamento do caixa.
 
 ## Entregas implementadas
 
