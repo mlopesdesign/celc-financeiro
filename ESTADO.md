@@ -1,6 +1,6 @@
 # Estado do projeto — CELC Financeiro
 
-**Versão em preparação:** `0.2.14`
+**Versão em preparação:** `0.2.15`
 **Estado de validação:** correção do Caixa diário coberta pela suíte; atualização online em instalação existente real ainda pendente até a publicação desta preparação.
 **Aplicação:** desktop Windows para a gestão financeira do Colégio CELC.  
 **Stack:** JavaScript ESM, HTML/CSS puro, sql.js (SQLite local), Neutralino.js 6.3.0 e instalador NSIS.
@@ -78,6 +78,11 @@ Após duas tentativas de atualização reportadas como fracassadas, a correção
 
 - O fluxo de atualização segue a implementação já validada no Salgueiro: grava `resources.neu.new`, cria um script PowerShell temporário com rollback para `resources.neu.bak`, dispara-o por `cmd.exe /d /c start` desacoplado do processo principal, aguarda o fechamento, troca o pacote e reabre o executável por `NL_PATH`.
 - O teste cobre explicitamente o comando desacoplado; a versão 0.2.13 permanece imutável como histórico e a correção segue em nova versão.
+
+## Banco vazio na atualização — 0.2.15
+
+- A validação de atualização agora aceita banco SQLite estruturalmente íntegro, mesmo sem lançamentos, como no fluxo validado do Salgueiro; isso permite atualizar instalações novas.
+- A validação estrita continua sendo usada para backup manual e restauração, exigindo movimentações para evitar aceitar cópia de dados vazia como backup financeiro.
 
 ## Caixa diário com competência — 0.2.13
 

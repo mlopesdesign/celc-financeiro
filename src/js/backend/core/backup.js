@@ -1,10 +1,13 @@
-export async function validarBanco(dados) {
+async function validarBancoInterno(dados,exigirMovimentacao=true) {
   const bytes=dados instanceof Uint8Array?dados:dados instanceof ArrayBuffer?new Uint8Array(dados):null;
   if (!bytes || bytes.length < 100 || new TextDecoder().decode(bytes.slice(0, 16)) !== 'SQLite format 3\u0000') return false;
   const carregarSql=globalThis.window?.initSqlJs||globalThis.initSqlJs;
   if (typeof carregarSql!=='function') return false;
-try { const SQL=await carregarSql({locateFile:(arquivo)=>`js/vendor/${arquivo}`}); const db=new SQL.Database(bytes); const tabelas=db.exec("SELECT name FROM sqlite_master WHERE type='table' AND name IN ('lancamentos','auditoria','acesso')"); const movimentos=db.exec('SELECT COUNT(*) FROM lancamentos'); const valido=Boolean(tabelas[0] && tabelas[0].values.length===3 && movimentos[0] && Number(movimentos[0].values[0][0])>0); db.close(); return valido; } catch { return false; }
+  try { const SQL=await carregarSql({locateFile:(arquivo)=>`js/vendor/${arquivo}`}); const db=new SQL.Database(bytes); const tabelas=db.exec("SELECT name FROM sqlite_master WHERE type='table' AND name IN ('lancamentos','auditoria','acesso')"); const movimentos=db.exec('SELECT COUNT(*) FROM lancamentos'); const valido=Boolean(tabelas[0] && tabelas[0].values.length===3 && movimentos[0] && (!exigirMovimentacao||Number(movimentos[0].values[0][0])>0)); db.close(); return valido; } catch { return false; }
 }
+
+export function validarBanco(dados){return validarBancoInterno(dados,true);}
+export function validarBancoParaAtualizacao(dados){return validarBancoInterno(dados,false);}
 
 async function substituirComSeguranca(Neutralino, destino, dados) {
   const temporario=`${destino}.tmp`, anterior=`${destino}.old`;
@@ -15,13 +18,14 @@ async function substituirComSeguranca(Neutralino, destino, dados) {
   try { await Neutralino.filesystem.remove(anterior); } catch { /* sem cópia anterior */ }
 }
 
-export async function criarBackup(Neutralino, caminhoBanco) {
+export async function criarBackup(Neutralino, caminhoBanco, { permitirVazio=false } = {}) {
   if (!caminhoBanco || !Neutralino) return { ok:false, erro:'Backup disponível somente no aplicativo Windows.' };
   const pasta=caminhoBanco.slice(0,caminhoBanco.lastIndexOf('\\')), destinoPasta=`${pasta}\\backups`, nome=`celc-financeiro-${new Date().toISOString().replaceAll(':','-').slice(0,19)}.db`;
   try { await Neutralino.filesystem.createDirectory(destinoPasta); } catch { /* pasta existente */ }
   try {
     const dados=await Neutralino.filesystem.readBinaryFile(caminhoBanco);
-    if (!(await validarBanco(dados))) return { ok:false, erro:'O banco atual não passou na validação de integridade.' };
+    const valido=permitirVazio?await validarBancoParaAtualizacao(dados):await validarBanco(dados);
+    if (!valido) return { ok:false, erro:'O banco atual não passou na validação de integridade.' };
     await Neutralino.filesystem.writeBinaryFile(`${destinoPasta}\\${nome}`,dados);
     return { ok:true,caminho:`${destinoPasta}\\${nome}` };
   } catch (erro) {
