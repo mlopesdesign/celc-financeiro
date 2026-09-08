@@ -1,4 +1,5 @@
 import assert from 'node:assert/strict';
+import {readFile} from 'node:fs/promises';
 import {exportarRelatorioPdf,gerarPdfRelatorio,resumirRelatorios} from '../src/js/backend/core/relatorios.js';
 
 const lancamentos=[
@@ -40,4 +41,10 @@ const neutralino={filesystem:{createDirectory:async()=>{},writeBinaryFile:async(
 assert.equal((await exportarRelatorioPdf(neutralino,{modo:'sqlite',caminho:'C:\\CELC Financeiro\\dados\\celc-financeiro.db',...bancoRelatorio},{inicio:'2026-08-01',fim:'2026-08-31'})).ok,true);
 assert.equal(arquivoPdf.caminho.endsWith('.pdf'),true);
 assert.equal(new TextDecoder('latin1').decode(arquivoPdf.bytes).startsWith('%PDF-1.4'),true);
-console.log('20 asserções aprovadas — cálculos, categorias completas e PDF dos relatórios financeiros.');
+const interfaceRelatorios=await readFile(new URL('../src/js/app.js',import.meta.url),'utf8');
+assert.equal(interfaceRelatorios.includes("['categorias','Por categoria']"),true);
+assert.equal(interfaceRelatorios.includes('Resultado por categoria'),true);
+assert.equal(interfaceRelatorios.includes('Arrecadado no período'),true);
+assert.equal(interfaceRelatorios.includes('Gasto no período'),true);
+assert.equal(interfaceRelatorios.includes('category-total-card'),true);
+console.log('25 asserções aprovadas — cálculos, dashboard por categoria e PDF dos relatórios financeiros.');

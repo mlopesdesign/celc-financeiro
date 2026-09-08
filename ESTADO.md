@@ -1,6 +1,6 @@
 # Estado do projeto — CELC Financeiro
 
-**Versão em preparação:** `0.2.20`
+**Versão em preparação:** `0.2.21`
 **Estado de validação:** categorias excluídas permanecem excluídas após reabrir; relatórios abrangem período mensal, anual, personalizado e todas as categorias cadastradas; fechamento e atualização exigem backup silencioso concluído.
 **Aplicação:** desktop Windows para a gestão financeira do Colégio CELC.  
 **Stack:** JavaScript ESM, HTML/CSS puro, sql.js (SQLite local), Neutralino.js 6.3.0 e instalador NSIS.
@@ -119,6 +119,12 @@ Após duas tentativas de atualização reportadas como fracassadas, a correção
 - `tests/persistencia.mjs` cobre exclusão permanente; `tests/relatorios.mjs` cobre categorias existentes sem lançamentos.
 - O fechamento deixa de encerrar o processo diretamente: aguarda a persistência, cria backup silencioso e só então finaliza; se a cópia falhar, o aplicativo permanece aberto.
 - A atualização online já aguarda a persistência e cria backup silencioso obrigatório antes do download e da troca de `resources.neu`.
+
+## Relatório por categoria explícito — 0.2.21
+
+- A tela Relatórios passa a ter a aba própria **Por categoria**, sem depender das abas separadas de Entradas e Despesas.
+- A aba é um dashboard de cartões: cada categoria exibe o total efetivamente arrecadado ou gasto no período selecionado e sua quantidade de lançamentos; categorias sem movimentação são exibidas com total zero.
+- A atualização online continua distribuindo exclusivamente `resources.neu`; o instalador não é baixado nem executado por esse fluxo.
 
 ## Caixa diário com competência — 0.2.13
 
