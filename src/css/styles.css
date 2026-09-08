@@ -12,3 +12,5 @@ main{padding:42px 56px 56px;max-width:1560px}header{margin-bottom:34px}.content-
 
 @media(max-width:1150px){main{padding:34px 34px 44px}.content-grid{gap:22px}.panel{padding:26px}.metric-strip span{min-width:140px}}
 @media(max-width:620px){.expense-search-result{align-items:flex-start;flex-direction:column}.expense-search-result>div:last-child{justify-items:start}.caixa-detalhamento .row-actions{flex-wrap:wrap}}
+
+.sidebar #menu{flex:1;min-height:0;overflow-y:auto;scrollbar-width:none;-ms-overflow-style:none;padding-right:2px}.sidebar #menu::-webkit-scrollbar{display:none}

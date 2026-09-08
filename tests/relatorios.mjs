@@ -14,15 +14,19 @@ const devedores=[
   {aluno:'Diego',situacao:'em_aberto',vencimento:dataIso(amanha),valorCentavos:2500},
   {aluno:'Elisa',situacao:'quitado',vencimento:'2026-08-15',valorCentavos:8000}
 ];
-const relatorio=resumirRelatorios({listarLancamentos:()=>lancamentos,listarDevedores:()=>devedores},{inicio:'2026-08-01',fim:'2026-08-31'});
+const categorias=[{id:'c1',nome:'Matrículas',tipo:'entrada'},{id:'c2',nome:'Receitas escolares',tipo:'entrada'},{id:'c3',nome:'Doações futuras',tipo:'entrada'},{id:'c4',nome:'Pessoal',tipo:'despesa'},{id:'c5',nome:'Serviços e utilidades',tipo:'despesa'},{id:'c6',nome:'Manutenção futura',tipo:'despesa'}];
+const bancoRelatorio={listarLancamentos:()=>lancamentos,listarDevedores:()=>devedores,listarCategorias:()=>categorias};
+const relatorio=resumirRelatorios(bancoRelatorio,{inicio:'2026-08-01',fim:'2026-08-31'});
 assert.equal(relatorio.totais.entradasRealizadas,10000);
 assert.equal(relatorio.totais.despesasRealizadas,3000);
 assert.equal(relatorio.totais.resultadoRealizado,7000);
 assert.equal(relatorio.totais.aReceber,5000);
 assert.equal(relatorio.totais.aPagar,2000);
 assert.equal(relatorio.totais.resultadoProjetado,10000);
-assert.equal(relatorio.categoriasEntrada.length,2);
+assert.equal(relatorio.categoriasEntrada.length,3);
 assert.equal(relatorio.categoriasDespesa.find(x=>x.categoria==='Pessoal').realizado,3000);
+assert.equal(relatorio.categoriasEntrada.find(x=>x.categoria==='Doações futuras').projetado,0);
+assert.equal(relatorio.categoriasDespesa.find(x=>x.categoria==='Manutenção futura').quantidade,0);
 assert.equal(relatorio.fluxo.length,2);
 assert.equal(relatorio.devedores.quantidade,2);
 assert.equal(relatorio.devedores.valor,6500);
@@ -33,7 +37,7 @@ assert.equal(textoPdf.startsWith('%PDF-1.4'),true);
 assert.equal(textoPdf.includes('CELC Financeiro'),true);
 let arquivoPdf=null;
 const neutralino={filesystem:{createDirectory:async()=>{},writeBinaryFile:async(caminho,bytes)=>{arquivoPdf={caminho,bytes};}}};
-assert.equal((await exportarRelatorioPdf(neutralino,{modo:'sqlite',caminho:'C:\\CELC Financeiro\\dados\\celc-financeiro.db',listarLancamentos:()=>lancamentos,listarDevedores:()=>devedores},{inicio:'2026-08-01',fim:'2026-08-31'})).ok,true);
+assert.equal((await exportarRelatorioPdf(neutralino,{modo:'sqlite',caminho:'C:\\CELC Financeiro\\dados\\celc-financeiro.db',...bancoRelatorio},{inicio:'2026-08-01',fim:'2026-08-31'})).ok,true);
 assert.equal(arquivoPdf.caminho.endsWith('.pdf'),true);
 assert.equal(new TextDecoder('latin1').decode(arquivoPdf.bytes).startsWith('%PDF-1.4'),true);
-console.log('18 asserções aprovadas — cálculos e PDF dos relatórios financeiros.');
+console.log('20 asserções aprovadas — cálculos, categorias completas e PDF dos relatórios financeiros.');

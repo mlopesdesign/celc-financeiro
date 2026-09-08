@@ -1,7 +1,7 @@
 # Estado do projeto — CELC Financeiro
 
-**Versão em preparação:** `0.2.19`
-**Estado de validação:** cada gravação do SQLite é relida e comparada byte a byte; backup e restauração selecionados foram cobertos por teste físico.
+**Versão em preparação:** `0.2.20`
+**Estado de validação:** categorias excluídas permanecem excluídas após reabrir; relatórios abrangem período mensal, anual, personalizado e todas as categorias cadastradas; fechamento e atualização exigem backup silencioso concluído.
 **Aplicação:** desktop Windows para a gestão financeira do Colégio CELC.  
 **Stack:** JavaScript ESM, HTML/CSS puro, sql.js (SQLite local), Neutralino.js 6.3.0 e instalador NSIS.
 
@@ -110,6 +110,15 @@ Após duas tentativas de atualização reportadas como fracassadas, a correção
 - Após cada escrita, o arquivo final é relido e comparado byte a byte com a exportação do SQLite. Divergência interrompe a operação e retorna erro, sem apresentar sucesso falso.
 - A tela de Backup permite escolher o destino da cópia e selecionar exatamente qual arquivo `.db` restaurar; a restauração valida o arquivo estruturalmente antes de substituir o banco.
 - `tests/backup.mjs` valida backup físico, restauração automática, destino escolhido e restauração do arquivo escolhido; `tests/persistencia.mjs` confirma categoria depois da reabertura.
+
+## Categorias e relatórios gerenciais — 0.2.20
+
+- As categorias padrão são inseridas somente na criação de um banco novo. Ao excluir todas as categorias sem lançamentos, elas não voltam após fechar e reabrir.
+- Relatórios agora exibem todas as categorias cadastradas, inclusive categorias sem movimentação no período, com saldo zero.
+- A tela de Relatórios oferece atalhos para mês atual e ano atual, além do filtro de intervalo de datas para relatórios personalizados, CSV e PDF.
+- `tests/persistencia.mjs` cobre exclusão permanente; `tests/relatorios.mjs` cobre categorias existentes sem lançamentos.
+- O fechamento deixa de encerrar o processo diretamente: aguarda a persistência, cria backup silencioso e só então finaliza; se a cópia falhar, o aplicativo permanece aberto.
+- A atualização online já aguarda a persistência e cria backup silencioso obrigatório antes do download e da troca de `resources.neu`.
 
 ## Caixa diário com competência — 0.2.13
 

@@ -27,7 +27,7 @@ const Neutralino={
 globalThis.window={Neutralino,initSqlJs:async()=>SQL};
 globalThis.Neutralino=Neutralino;
 const {abrirBancoSeguro}=await import('../src/js/backend/db.js');
-const {cadastrarCategoria}=await import('../src/js/backend/core/categorias.js');
+const {cadastrarCategoria,excluirCategoria}=await import('../src/js/backend/core/categorias.js');
 const primeiro=await abrirBancoSeguro();
 const criado=await cadastrarCategoria(primeiro,'Categoria persistida','entrada');
 assert.equal(criado.ok,true,'cadastra categoria no SQLite externo');
@@ -38,7 +38,10 @@ assert.equal(disco.exec("SELECT nome FROM categorias WHERE nome='Categoria persi
 disco.close();
 const segundo=await abrirBancoSeguro();
 assert.equal(segundo.listarCategorias().some(item=>item.nome==='Categoria persistida'),true,'categoria permanece após reabrir o banco');
+for(const categoria of segundo.listarCategorias(false))assert.equal((await excluirCategoria(segundo,categoria.id)).ok,true,'permite excluir categorias sem lançamentos');
+const terceiro=await abrirBancoSeguro();
+assert.equal(terceiro.listarCategorias(false).length,0,'não recria categorias após o usuário excluir todas');
 await rm(pasta,{recursive:true,force:true});
 delete globalThis.window;
 delete globalThis.Neutralino;
-console.log('4 asserções aprovadas — criação física e reabertura do SQLite.');
+console.log('6 asserções aprovadas — criação física, reabertura e exclusão permanente de categorias.');

@@ -54,6 +54,7 @@
 | `categorias:listar` | src/js/app.js |
 | `lancamentos:editar` | src/js/app.js |
 | `lancamentos:criar` | src/js/app.js |
+| `backup:criar` | src/js/app.js |
 | `lancamentos:recorrencias` | src/js/app.js |
 | `lancamentos:atualizarVencidos` | src/js/app.js |
 | `painel:resumo` | src/js/backend/servidor.js |
