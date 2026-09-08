@@ -1,9 +1,9 @@
-import {abrirBanco} from './backend/db.js';
+import {abrirBancoSeguro} from './backend/db.js';
 import {garantirAcesso,validarAcesso} from './auth.js';
 import {criarApi} from './backend/servidor.js';
 import {verificarAtualizacao,instalarAtualizacao} from './backend/atualizador.js';
 
-const APP_VERSION='0.2.15';
+const APP_VERSION='0.2.16';
 const hoje=new Date().toISOString().slice(0,10);
 const $=seletor=>document.querySelector(seletor);
 const $$=seletor=>Array.from(document.querySelectorAll(seletor));
@@ -376,7 +376,7 @@ async function iniciar(){
     if(window.Neutralino){
       await new Promise(resolve=>window.addEventListener('ready',resolve,{once:true}));
     }
-    banco=await abrirBanco();
+    banco=await abrirBancoSeguro();
     await garantirAcesso(banco);
     api=criarApi({banco,Neutralino:window.Neutralino});
     $('#loginUsuario').value='admin';
