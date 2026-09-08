@@ -1,7 +1,7 @@
 # Estado do projeto — CELC Financeiro
 
-**Versão em preparação:** `0.2.16`
-**Estado de validação:** persistência agora falha de forma explícita no aplicativo distribuído; suíte automatizada aprovada. Build e instalação real ainda pendentes.
+**Versão em preparação:** `0.2.17`
+**Estado de validação:** o aplicativo confirma a criação e leitura do SQLite antes do login; backup de banco recém-criado também é validado pela suíte.
 **Aplicação:** desktop Windows para a gestão financeira do Colégio CELC.  
 **Stack:** JavaScript ESM, HTML/CSS puro, sql.js (SQLite local), Neutralino.js 6.3.0 e instalador NSIS.
 
@@ -90,6 +90,12 @@ Após duas tentativas de atualização reportadas como fracassadas, a correção
 - A API de escrita aguarda a fila de persistência antes de concluir cada operação; falhas de gravação deixam de ser descartadas silenciosamente.
 - `resources.neu` e o instalador `CELC-Financeiro-Setup-0.2.16.exe` foram gerados em `Release/v0.2.16`.
 - Suíte automatizada, sintaxe e UTF-8 aprovados; ainda falta validar instalação e reabertura em uma máquina limpa.
+
+## Confirmação física de dados — 0.2.17
+
+- A abertura agora cria, grava e relê `%APPDATA%\\CELC Financeiro\\dados\\celc-financeiro.db` antes de liberar a tela de login.
+- Se o arquivo não puder ser confirmado, o aplicativo não entra na área financeira e informa a falha de dados.
+- O backup aceita banco SQLite estruturalmente válido recém-criado; o teste cobre essa cópia inicial.
 
 ## Caixa diário com competência — 0.2.13
 

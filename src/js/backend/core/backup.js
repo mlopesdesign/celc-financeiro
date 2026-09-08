@@ -18,7 +18,7 @@ async function substituirComSeguranca(Neutralino, destino, dados) {
   try { await Neutralino.filesystem.remove(anterior); } catch { /* sem cópia anterior */ }
 }
 
-export async function criarBackup(Neutralino, caminhoBanco, { permitirVazio=false } = {}) {
+export async function criarBackup(Neutralino, caminhoBanco, { permitirVazio=true } = {}) {
   if (!caminhoBanco || !Neutralino) return { ok:false, erro:'Backup disponível somente no aplicativo Windows.' };
   const pasta=caminhoBanco.slice(0,caminhoBanco.lastIndexOf('\\')), destinoPasta=`${pasta}\\backups`, nome=`celc-financeiro-${new Date().toISOString().replaceAll(':','-').slice(0,19)}.db`;
   try { await Neutralino.filesystem.createDirectory(destinoPasta); } catch { /* pasta existente */ }

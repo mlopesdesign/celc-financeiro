@@ -4,7 +4,7 @@ import {createRequire} from 'node:module';
 import path from 'node:path';
 import vm from 'node:vm';
 import {fileURLToPath} from 'node:url';
-import {validarBanco,validarBancoParaAtualizacao} from '../src/js/backend/core/backup.js';
+import {criarBackup,validarBanco,validarBancoParaAtualizacao} from '../src/js/backend/core/backup.js';
 
 const raiz=path.resolve(path.dirname(fileURLToPath(import.meta.url)),'..');
 const arquivoSql=path.join(raiz,'src','js','vendor','sql-wasm.js');
@@ -46,6 +46,16 @@ assert.equal(await validarBanco(bancoValido),true,'mantém compatibilidade com U
 assert.equal(await validarBanco(Uint8Array.from(criarBanco({comMovimento:false}))),false,'rejeita banco sem movimentações');
 assert.equal(await validarBancoParaAtualizacao(Uint8Array.from(criarBanco({comMovimento:false}))),true,'aceita banco estruturalmente íntegro e ainda sem movimentações na atualização');
 assert.equal(await validarBanco(new Uint8Array(256)),false,'rejeita conteúdo sem cabeçalho SQLite');
+const bancoNovo=Uint8Array.from(criarBanco({comMovimento:false}));
+const arquivos=[];
+const neutralinoTeste={filesystem:{
+  createDirectory:async()=>{},
+  readBinaryFile:async()=>bancoNovo.buffer.slice(bancoNovo.byteOffset,bancoNovo.byteOffset+bancoNovo.byteLength),
+  writeBinaryFile:async(caminho,dados)=>arquivos.push({caminho,dados})
+}};
+const copiaInicial=await criarBackup(neutralinoTeste,'C:\\dados\\celc-financeiro.db');
+assert.equal(copiaInicial.ok,true,'permite backup estruturalmente válido de uma instalação nova');
+assert.equal(arquivos.length,1,'grava a cópia do banco novo');
 delete globalThis.window;
 
-console.log('5 asserções aprovadas — validação real de SQLite, banco vazio na atualização e Uint8Array.');
+console.log('7 asserções aprovadas — validação real de SQLite, banco vazio na atualização e Uint8Array.');
