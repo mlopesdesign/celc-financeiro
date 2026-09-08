@@ -23,10 +23,13 @@ export async function abrirBancoSeguro(){
     const raiz=`${appdata}\\CELC Financeiro`,pasta=`${raiz}\\dados`,caminho=`${pasta}\\celc-financeiro.db`;
     try{await Neutralino.filesystem.createDirectory(raiz)}catch{}
     try{await Neutralino.filesystem.createDirectory(pasta)}catch{}
-    const SQL=await initSqlJs({locateFile:arquivo=>`js/vendor/${arquivo}`});
+    const carregarSql=window.initSqlJs;
+    if(typeof carregarSql!=='function') throw new Error('O mecanismo SQLite não foi carregado.');
+    const SQL=await carregarSql({locateFile:arquivo=>`js/vendor/${arquivo}`});
     let bytes;
     try{bytes=await Neutralino.filesystem.readBinaryFile(caminho)}catch{bytes=null}
-    const sql=new SQL.Database(bytes||undefined);
+    const bytesSql=bytes instanceof ArrayBuffer?new Uint8Array(bytes):bytes;
+    const sql=new SQL.Database(bytesSql||undefined);
     preparar(sql);
     const banco=adaptador(sql,'sqlite',caminho);
     const executar=banco.executar;

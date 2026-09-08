@@ -1,10 +1,11 @@
 import assert from 'node:assert/strict';
-import {readFile} from 'node:fs/promises';
+import {mkdtemp,readFile,rename,readdir,rm,writeFile,mkdir} from 'node:fs/promises';
+import {tmpdir} from 'node:os';
 import {createRequire} from 'node:module';
 import path from 'node:path';
 import vm from 'node:vm';
 import {fileURLToPath} from 'node:url';
-import {criarBackup,validarBanco,validarBancoParaAtualizacao} from '../src/js/backend/core/backup.js';
+import {criarBackup,restaurarBackupMaisRecente,validarBanco,validarBancoParaAtualizacao} from '../src/js/backend/core/backup.js';
 
 const raiz=path.resolve(path.dirname(fileURLToPath(import.meta.url)),'..');
 const arquivoSql=path.join(raiz,'src','js','vendor','sql-wasm.js');
@@ -56,6 +57,29 @@ const neutralinoTeste={filesystem:{
 const copiaInicial=await criarBackup(neutralinoTeste,'C:\\dados\\celc-financeiro.db');
 assert.equal(copiaInicial.ok,true,'permite backup estruturalmente válido de uma instalação nova');
 assert.equal(arquivos.length,1,'grava a cópia do banco novo');
+
+const pasta=await mkdtemp(path.join(tmpdir(),'celc-backup-restauracao-'));
+const paraDisco=caminho=>caminho.replaceAll('\\',path.sep);
+const caminhoBanco=`${pasta}\\dados\\celc-financeiro.db`;
+const neutralinoDisco={filesystem:{
+  createDirectory:async caminho=>mkdir(paraDisco(caminho),{recursive:true}),
+  readBinaryFile:async caminho=>{const dados=await readFile(paraDisco(caminho));return dados.buffer.slice(dados.byteOffset,dados.byteOffset+dados.byteLength);},
+  writeBinaryFile:async(caminho,dados)=>writeFile(paraDisco(caminho),Buffer.from(dados)),
+  move:async(origem,destino)=>rename(paraDisco(origem),paraDisco(destino)),
+  remove:async caminho=>rm(paraDisco(caminho),{force:true}),
+  readDirectory:async caminho=>(await readdir(paraDisco(caminho),{withFileTypes:true})).map(item=>({entry:item.name}))
+}};
+await neutralinoDisco.filesystem.createDirectory(`${pasta}\\dados`);
+const bancoOriginal=Uint8Array.from(criarBanco());
+await neutralinoDisco.filesystem.writeBinaryFile(caminhoBanco,bancoOriginal);
+const copia=await criarBackup(neutralinoDisco,caminhoBanco,{permitirVazio:false});
+assert.equal(copia.ok,true,'cria backup físico de banco com movimentação');
+const bancoAlterado=Uint8Array.from(criarBanco({comMovimento:false}));
+await neutralinoDisco.filesystem.writeBinaryFile(caminhoBanco,bancoAlterado);
+const restauracao=await restaurarBackupMaisRecente(neutralinoDisco,caminhoBanco);
+assert.equal(restauracao.ok,true,'restaura o backup físico mais recente');
+assert.deepEqual([...new Uint8Array(await neutralinoDisco.filesystem.readBinaryFile(caminhoBanco))],[...bancoOriginal],'restauração repõe exatamente o banco salvo');
+await rm(pasta,{recursive:true,force:true});
 delete globalThis.window;
 
-console.log('7 asserções aprovadas — validação real de SQLite, banco vazio na atualização e Uint8Array.');
+console.log('10 asserções aprovadas — validação, backup físico e restauração real de SQLite.');

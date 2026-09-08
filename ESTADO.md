@@ -1,7 +1,7 @@
 # Estado do projeto — CELC Financeiro
 
-**Versão em preparação:** `0.2.17`
-**Estado de validação:** o aplicativo confirma a criação e leitura do SQLite antes do login; backup de banco recém-criado também é validado pela suíte.
+**Versão em preparação:** `0.2.18`
+**Estado de validação:** persistência validada com criação de categoria, confirmação física do SQLite e reabertura do banco no mesmo caminho de produção.
 **Aplicação:** desktop Windows para a gestão financeira do Colégio CELC.  
 **Stack:** JavaScript ESM, HTML/CSS puro, sql.js (SQLite local), Neutralino.js 6.3.0 e instalador NSIS.
 
@@ -96,6 +96,13 @@ Após duas tentativas de atualização reportadas como fracassadas, a correção
 - A abertura agora cria, grava e relê `%APPDATA%\\CELC Financeiro\\dados\\celc-financeiro.db` antes de liberar a tela de login.
 - Se o arquivo não puder ser confirmado, o aplicativo não entra na área financeira e informa a falha de dados.
 - O backup aceita banco SQLite estruturalmente válido recém-criado; o teste cobre essa cópia inicial.
+
+## Reabertura persistente do SQLite — 0.2.18
+
+- Corrigida a abertura do banco já existente: `Neutralino.filesystem.readBinaryFile` devolve `ArrayBuffer`, que agora é convertido para `Uint8Array` antes de ser entregue ao sql.js.
+- Sem essa conversão, o sql.js abria um banco novo em memória ao reiniciar; agora o arquivo existente é aberto e preserva os registros criados anteriormente.
+- `tests/persistencia.mjs` cria uma categoria, confirma sua existência no arquivo SQLite salvo em disco, reabre o banco e confirma a mesma categoria após a reabertura.
+- A suíte completa, a verificação de sintaxe e a varredura UTF-8 foram executadas com sucesso antes do empacotamento.
 
 ## Caixa diário com competência — 0.2.13
 
