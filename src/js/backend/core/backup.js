@@ -18,29 +18,42 @@ async function substituirComSeguranca(Neutralino, destino, dados) {
   try { await Neutralino.filesystem.remove(anterior); } catch { /* sem cópia anterior */ }
 }
 
-export async function criarBackup(Neutralino, caminhoBanco, { permitirVazio=true } = {}) {
+export async function criarBackup(Neutralino, caminhoBanco, { permitirVazio=true, destino='' } = {}) {
   if (!caminhoBanco || !Neutralino) return { ok:false, erro:'Backup disponível somente no aplicativo Windows.' };
-  const pasta=caminhoBanco.slice(0,caminhoBanco.lastIndexOf('\\')), destinoPasta=`${pasta}\\backups`, nome=`celc-financeiro-${new Date().toISOString().replaceAll(':','-').slice(0,19)}.db`;
-  try { await Neutralino.filesystem.createDirectory(destinoPasta); } catch { /* pasta existente */ }
+  const pasta=caminhoBanco.slice(0,caminhoBanco.lastIndexOf('\\')), destinoPasta=`${pasta}\\backups`, nome=`celc-financeiro-${new Date().toISOString().replaceAll(':','-').slice(0,19)}.db`, destinoFinal=destino||`${destinoPasta}\\${nome}`;
+  if(!destino)try { await Neutralino.filesystem.createDirectory(destinoPasta); } catch { /* pasta existente */ }
   try {
     const dados=await Neutralino.filesystem.readBinaryFile(caminhoBanco);
     const valido=permitirVazio?await validarBancoParaAtualizacao(dados):await validarBanco(dados);
     if (!valido) return { ok:false, erro:'O banco atual não passou na validação de integridade.' };
-    await Neutralino.filesystem.writeBinaryFile(`${destinoPasta}\\${nome}`,dados);
-    return { ok:true,caminho:`${destinoPasta}\\${nome}` };
+    await Neutralino.filesystem.writeBinaryFile(destinoFinal,dados);
+    return { ok:true,caminho:destinoFinal };
   } catch (erro) {
     console.error('Falha ao criar backup antes da atualização.',erro);
     return { ok:false, erro:'Não foi possível criar o backup antes da atualização. Nenhum arquivo do aplicativo foi trocado.' };
   }
 }
 
+export async function restaurarBackup(Neutralino, caminhoBanco, caminhoBackup) {
+  if (!caminhoBanco || !Neutralino) return { ok:false, erro:'Restauração disponível somente no aplicativo Windows.' };
+  if(!caminhoBackup)return { ok:false, erro:'Selecione um arquivo de backup para restaurar.' };
+  try{
+    const dados=await Neutralino.filesystem.readBinaryFile(caminhoBackup);
+    if (!(await validarBancoParaAtualizacao(dados))) return { ok:false, erro:'O arquivo selecionado não passou na validação de integridade.' };
+    await substituirComSeguranca(Neutralino,caminhoBanco,dados);
+    return { ok:true,caminho:caminhoBackup };
+  }catch(erro){
+    console.error('Falha ao restaurar backup.',erro);
+    return {ok:false,erro:'Não foi possível restaurar o arquivo selecionado.'};
+  }
+}
+
 export async function restaurarBackupMaisRecente(Neutralino, caminhoBanco) {
   if (!caminhoBanco || !Neutralino) return { ok:false, erro:'Restauração disponível somente no aplicativo Windows.' };
   const pasta=`${caminhoBanco.slice(0,caminhoBanco.lastIndexOf('\\'))}\\backups`;
-  const arquivos=await Neutralino.filesystem.readDirectory(pasta), backups=arquivos.filter((item)=>item.entry.endsWith('.db')).sort((a,b)=>b.entry.localeCompare(a.entry));
-  if (!backups.length) return { ok:false, erro:'Nenhum backup encontrado.' };
-  const origem=`${pasta}\\${backups[0].entry}`, dados=await Neutralino.filesystem.readBinaryFile(origem);
-  if (!(await validarBanco(dados))) return { ok:false, erro:'O backup mais recente não passou na validação de integridade.' };
-  await substituirComSeguranca(Neutralino,caminhoBanco,dados);
-  return { ok:true,caminho:origem };
+  try{
+    const arquivos=await Neutralino.filesystem.readDirectory(pasta), backups=arquivos.filter((item)=>item.entry.endsWith('.db')).sort((a,b)=>b.entry.localeCompare(a.entry));
+    if (!backups.length) return { ok:false, erro:'Nenhum backup encontrado.' };
+    return restaurarBackup(Neutralino,caminhoBanco,`${pasta}\\${backups[0].entry}`);
+  }catch(erro){return {ok:false,erro:'Não foi possível localizar o backup automático.'};}
 }

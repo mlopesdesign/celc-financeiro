@@ -3,7 +3,7 @@ import {garantirAcesso,validarAcesso} from './auth.js';
 import {criarApi} from './backend/servidor.js';
 import {verificarAtualizacao,instalarAtualizacao} from './backend/atualizador.js';
 
-const APP_VERSION='0.2.18';
+const APP_VERSION='0.2.19';
 const hoje=new Date().toISOString().slice(0,10);
 const $=seletor=>document.querySelector(seletor);
 const $$=seletor=>Array.from(document.querySelectorAll(seletor));
@@ -40,6 +40,10 @@ function aviso(texto,erro=false){
   document.body.append(toast);
   setTimeout(()=>toast.remove(),4200);
 }
+
+function caminhoDoDialogo(resultado){return Array.isArray(resultado)?resultado[0]||'':typeof resultado==='string'?resultado:'';}
+async function escolherDestinoBackup(){return caminhoDoDialogo(await window.Neutralino.os.showSaveDialog('Salvar backup do CELC Financeiro',{defaultPath:'celc-financeiro-backup.db',filters:[{name:'Banco de dados CELC',extensions:['db']}]}));}
+async function escolherArquivoBackup(){return caminhoDoDialogo(await window.Neutralino.os.showOpenDialog('Selecionar backup do CELC Financeiro',{multiSelections:false,filters:[{name:'Banco de dados CELC',extensions:['db']}]}));}
 
 function dataPt(data){
   return data?new Date(`${data}T12:00`).toLocaleDateString('pt-BR'):'-';
@@ -124,7 +128,7 @@ async function relatorios(){
 
 async function configuracoes(){
   const versao=APP_VERSION;
-  return `<section class="panel settings"><nav class="settings-tabs"><button class="active" data-aba="senha">Segurança</button><button data-aba="backup">Backup</button><button data-aba="atualizacao">Atualização</button></nav><article data-painel="senha"><h3>Trocar senha</h3><form id="formSenha" class="stack"><label>Senha atual<input name="atual" type="password" required></label><label>Nova senha<input name="nova" type="password" minlength="8" required></label><label>Confirmar senha<input name="confirmacao" type="password" minlength="8" required></label><button class="primary-action">Salvar nova senha</button></form></article><article data-painel="backup" hidden><h3>Proteção dos dados</h3><p class="subtitle">O banco está separado do executável. O backup só é aceito quando passa pela validação de integridade.</p><button class="primary-action" id="criarBackup">Criar backup agora</button><button class="outline-button" id="restaurarBackup">Restaurar último backup</button></article><article data-painel="atualizacao" hidden><h3>Atualização do sistema</h3><p class="subtitle">Versão instalada: <b>${versao}</b>. A consulta é feita automaticamente no canal oficial do CELC; não há configuração técnica exposta.</p><button class="primary-action" id="verificar">Verificar agora</button><button class="outline-button" id="instalar" disabled>Instalar atualização</button><p id="statusAtualizacao" class="form-feedback"></p></article></section>`;
+  return `<section class="panel settings"><nav class="settings-tabs"><button class="active" data-aba="senha">Segurança</button><button data-aba="backup">Backup</button><button data-aba="atualizacao">Atualização</button></nav><article data-painel="senha"><h3>Trocar senha</h3><form id="formSenha" class="stack"><label>Senha atual<input name="atual" type="password" required></label><label>Nova senha<input name="nova" type="password" minlength="8" required></label><label>Confirmar senha<input name="confirmacao" type="password" minlength="8" required></label><button class="primary-action">Salvar nova senha</button></form></article><article data-painel="backup" hidden><h3>Proteção dos dados</h3><p class="subtitle">Escolha onde guardar a cópia do banco e selecione exatamente qual backup restaurar. Cada arquivo é validado antes da operação.</p><div class="toolbar-actions"><button class="primary-action" id="criarBackup">Escolher destino e criar backup</button><button class="outline-button" id="restaurarBackup">Selecionar backup para restaurar</button></div></article><article data-painel="atualizacao" hidden><h3>Atualização do sistema</h3><p class="subtitle">Versão instalada: <b>${versao}</b>. A consulta é feita automaticamente no canal oficial do CELC; não há configuração técnica exposta.</p><button class="primary-action" id="verificar">Verificar agora</button><button class="outline-button" id="instalar" disabled>Instalar atualização</button><p id="statusAtualizacao" class="form-feedback"></p></article></section>`;
 }
 
 async function render(){
@@ -303,8 +307,7 @@ function ligarEventos(){
     $$('[data-painel]').forEach(painel=>painel.hidden=painel.dataset.painel!==botao.dataset.aba);
   });
   $('#criarBackup')&&($('#criarBackup').onclick=async()=>{
-    const resposta=await api('backup:criar');
-    aviso(resposta.ok?'Backup criado.':resposta.erro,!resposta.ok);
+    try{const destino=await escolherDestinoBackup();if(!destino)return;const resposta=await api('backup:criar',{destino});aviso(resposta.ok?'Backup criado no local escolhido.':resposta.erro,!resposta.ok);}catch{aviso('Não foi possível abrir a seleção de destino.',true);}
   });
   $('#restaurarBackup')&&($('#restaurarBackup').onclick=async evento=>{
     if(evento.currentTarget.dataset.ok!=='1'){
@@ -312,8 +315,7 @@ function ligarEventos(){
       evento.currentTarget.textContent='Confirmar restauração';
       return;
     }
-    const resposta=await api('backup:restaurar');
-    resposta.ok?location.reload():aviso(resposta.erro,true);
+    try{const caminho=await escolherArquivoBackup();if(!caminho){evento.currentTarget.dataset.ok='0';evento.currentTarget.textContent='Selecionar backup para restaurar';return;}const resposta=await api('backup:restaurar',{caminho});resposta.ok?location.reload():aviso(resposta.erro,true);}catch{aviso('Não foi possível abrir a seleção de backup.',true);}
   });
   $('#verificar')&&($('#verificar').onclick=async()=>{
     const botao=$('#verificar');botao.disabled=true;const versao=APP_VERSION;
@@ -331,8 +333,7 @@ function ligarBase(){
   $$('[data-tela]').forEach(botao=>botao.onclick=()=>irPara(botao.dataset.tela));
   $('#novo').onclick=()=>abrirModal();
   $('#backup').onclick=async()=>{
-    const resposta=await api('backup:criar');
-    aviso(resposta.ok?'Backup criado.':resposta.erro,!resposta.ok);
+    try{const destino=await escolherDestinoBackup();if(!destino)return;const resposta=await api('backup:criar',{destino});aviso(resposta.ok?'Backup criado no local escolhido.':resposta.erro,!resposta.ok);}catch{aviso('Não foi possível abrir a seleção de destino.',true);}
   };
   $('#fechar').onclick=()=>$('#modal').classList.remove('show');
   $('#modal').onclick=evento=>{

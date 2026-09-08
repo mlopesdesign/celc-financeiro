@@ -1,7 +1,7 @@
 # Estado do projeto — CELC Financeiro
 
-**Versão em preparação:** `0.2.18`
-**Estado de validação:** persistência validada com criação de categoria, confirmação física do SQLite e reabertura do banco no mesmo caminho de produção.
+**Versão em preparação:** `0.2.19`
+**Estado de validação:** cada gravação do SQLite é relida e comparada byte a byte; backup e restauração selecionados foram cobertos por teste físico.
 **Aplicação:** desktop Windows para a gestão financeira do Colégio CELC.  
 **Stack:** JavaScript ESM, HTML/CSS puro, sql.js (SQLite local), Neutralino.js 6.3.0 e instalador NSIS.
 
@@ -103,6 +103,13 @@ Após duas tentativas de atualização reportadas como fracassadas, a correção
 - Sem essa conversão, o sql.js abria um banco novo em memória ao reiniciar; agora o arquivo existente é aberto e preserva os registros criados anteriormente.
 - `tests/persistencia.mjs` cria uma categoria, confirma sua existência no arquivo SQLite salvo em disco, reabre o banco e confirma a mesma categoria após a reabertura.
 - A suíte completa, a verificação de sintaxe e a varredura UTF-8 foram executadas com sucesso antes do empacotamento.
+
+## Persistência confirmada e backup escolhido — 0.2.19
+
+- O caminho de gravação normaliza `ArrayBuffer` e views de qualquer contexto JavaScript antes de salvar ou abrir o SQLite.
+- Após cada escrita, o arquivo final é relido e comparado byte a byte com a exportação do SQLite. Divergência interrompe a operação e retorna erro, sem apresentar sucesso falso.
+- A tela de Backup permite escolher o destino da cópia e selecionar exatamente qual arquivo `.db` restaurar; a restauração valida o arquivo estruturalmente antes de substituir o banco.
+- `tests/backup.mjs` valida backup físico, restauração automática, destino escolhido e restauração do arquivo escolhido; `tests/persistencia.mjs` confirma categoria depois da reabertura.
 
 ## Caixa diário com competência — 0.2.13
 

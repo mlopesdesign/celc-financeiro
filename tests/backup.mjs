@@ -5,7 +5,7 @@ import {createRequire} from 'node:module';
 import path from 'node:path';
 import vm from 'node:vm';
 import {fileURLToPath} from 'node:url';
-import {criarBackup,restaurarBackupMaisRecente,validarBanco,validarBancoParaAtualizacao} from '../src/js/backend/core/backup.js';
+import {criarBackup,restaurarBackup,restaurarBackupMaisRecente,validarBanco,validarBancoParaAtualizacao} from '../src/js/backend/core/backup.js';
 
 const raiz=path.resolve(path.dirname(fileURLToPath(import.meta.url)),'..');
 const arquivoSql=path.join(raiz,'src','js','vendor','sql-wasm.js');
@@ -79,7 +79,16 @@ await neutralinoDisco.filesystem.writeBinaryFile(caminhoBanco,bancoAlterado);
 const restauracao=await restaurarBackupMaisRecente(neutralinoDisco,caminhoBanco);
 assert.equal(restauracao.ok,true,'restaura o backup físico mais recente');
 assert.deepEqual([...new Uint8Array(await neutralinoDisco.filesystem.readBinaryFile(caminhoBanco))],[...bancoOriginal],'restauração repõe exatamente o banco salvo');
+const backupEscolhido=`${pasta}\\backup-escolhido.db`;
+const bancoEstrutural=Uint8Array.from(criarBanco({comMovimento:false}));
+await neutralinoDisco.filesystem.writeBinaryFile(caminhoBanco,bancoEstrutural);
+const copiaEscolhida=await criarBackup(neutralinoDisco,caminhoBanco,{destino:backupEscolhido});
+assert.equal(copiaEscolhida.ok,true,'cria backup no destino escolhido mesmo sem movimentações');
+await neutralinoDisco.filesystem.writeBinaryFile(caminhoBanco,bancoOriginal);
+const restauracaoEscolhida=await restaurarBackup(neutralinoDisco,caminhoBanco,backupEscolhido);
+assert.equal(restauracaoEscolhida.ok,true,'restaura o arquivo de backup escolhido');
+assert.deepEqual([...new Uint8Array(await neutralinoDisco.filesystem.readBinaryFile(caminhoBanco))],[...bancoEstrutural],'restauração escolhida repõe o arquivo selecionado');
 await rm(pasta,{recursive:true,force:true});
 delete globalThis.window;
 
-console.log('10 asserções aprovadas — validação, backup físico e restauração real de SQLite.');
+console.log('14 asserções aprovadas — validação, backup físico, destino escolhido e restauração real de SQLite.');
