@@ -36,6 +36,7 @@
 | `relatorios:resumo` | src/js/app.js |
 | `relatorios:detalharCategoria` | src/js/app.js |
 | `categorias:listar` | src/js/app.js |
+| `lancamentos:sugerirDescricoes` | src/js/app.js |
 | `lancamentos:listar` | src/js/app.js |
 | `lancamentos:baixar` | src/js/app.js |
 | `lancamentos:excluir` | src/js/app.js |
@@ -60,6 +61,7 @@
 | `lancamentos:atualizarVencidos` | src/js/app.js |
 | `painel:resumo` | src/js/backend/servidor.js |
 | `lancamentos:listar` | src/js/backend/servidor.js |
+| `lancamentos:sugerirDescricoes` | src/js/backend/servidor.js |
 | `lancamentos:criar` | src/js/backend/servidor.js |
 | `lancamentos:editar` | src/js/backend/servidor.js |
 | `lancamentos:baixar` | src/js/backend/servidor.js |

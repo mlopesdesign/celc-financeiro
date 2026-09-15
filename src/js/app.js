@@ -3,7 +3,7 @@ import {garantirAcesso,validarAcesso} from './auth.js';
 import {criarApi} from './backend/servidor.js';
 import {verificarAtualizacao,instalarAtualizacao} from './backend/atualizador.js';
 
-const APP_VERSION='0.2.22';
+const APP_VERSION='0.2.23';
 const hoje=new Date().toISOString().slice(0,10);
 const $=seletor=>document.querySelector(seletor);
 const $$=seletor=>Array.from(document.querySelectorAll(seletor));
@@ -19,6 +19,7 @@ let categoriaEmEdicao=null;
 let relatorioAba='geral';
 let periodoRelatorio={inicio:`${hoje.slice(0,7)}-01`,fim:hoje};
 let fechamentoEmAndamento=false;
+let consultaDescricao=0;
 
 const telas={
   dashboard:{rotulo:'PAINEL FINANCEIRO',titulo:'Visão geral',subtitulo:'Acompanhe a saúde financeira do Colégio CELC.',montar:dashboard},
@@ -188,6 +189,16 @@ async function preencherCategorias(valor=''){
   form.categoriaId.innerHTML=cats.filter(cat=>cat.tipo===tipo).map(cat=>`<option value="${esc(cat.id)}" ${cat.id===valor?'selected':''}>${esc(cat.nome)}</option>`).join('');
 }
 
+async function atualizarSugestoesDescricao(){
+  const form=$('#formLancamento'),lista=$('#sugestoesDescricao');
+  if(!form||!lista)return;
+  const termo=form.descricao.value.trim(),consulta=++consultaDescricao;
+  if(!termo){lista.innerHTML='';return;}
+  const sugestoes=await api('lancamentos:sugerirDescricoes',{tipo:form.tipo.value,termo,limite:8});
+  if(consulta!==consultaDescricao)return;
+  lista.innerHTML=sugestoes.map(item=>`<option value="${esc(item.descricao)}" label="${esc(item.categoria||'Sem categoria')}"></option>`).join('');
+}
+
 function abrirModal(item=null,predefinido={}){
   edicao=item;
   const form=$('#formLancamento');
@@ -208,6 +219,7 @@ function abrirModal(item=null,predefinido={}){
   }
   atualizarTextoRecorrencia();
   preencherCategorias(item?.categoriaId);
+  atualizarSugestoesDescricao();
   $('#modal').classList.add('show');
 }
 
@@ -378,7 +390,9 @@ function ligarBase(){
     const form=$('#formLancamento');
     atualizarTextoRecorrencia();
     preencherCategorias();
+    atualizarSugestoesDescricao();
   };
+  $('#formLancamento').descricao.oninput=atualizarSugestoesDescricao;
   $('#formLancamento').onsubmit=async evento=>{
     evento.preventDefault();
     const form=evento.currentTarget;

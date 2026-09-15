@@ -1,10 +1,10 @@
 {
   "name": "celc-financeiro",
-  "version": "0.2.22",
+  "version": "0.2.23",
   "private": true,
   "type": "module",
   "scripts": {
-    "test": "node tests/lancamentos.mjs && node tests/projecao.mjs && node tests/auth.mjs && node tests/atualizador.mjs && node tests/backup.mjs && node tests/persistencia.mjs && node tests/categorias.mjs && node tests/escolar.mjs && node tests/relatorios.mjs && node tests/vencidos.mjs && node tests/utf8.mjs",
+    "test": "node tests/lancamentos.mjs && node tests/sugestoes.mjs && node tests/projecao.mjs && node tests/auth.mjs && node tests/atualizador.mjs && node tests/backup.mjs && node tests/persistencia.mjs && node tests/categorias.mjs && node tests/escolar.mjs && node tests/relatorios.mjs && node tests/vencidos.mjs && node tests/utf8.mjs",
     "graphify": "node tools/graphify.js"
   }
 }
