@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import {readFile} from 'node:fs/promises';
-import {exportarRelatorioPdf,gerarPdfRelatorio,resumirRelatorios} from '../src/js/backend/core/relatorios.js';
+import {detalharCategoria,exportarRelatorioPdf,gerarPdfRelatorio,resumirRelatorios} from '../src/js/backend/core/relatorios.js';
 
 const lancamentos=[
   {id:'1',descricao:'Matrícula Ana',tipo:'entrada',categoria:'Matrículas',valorCentavos:10000,competencia:'2026-08-05',situacao:'recebido',liquidadoEm:'2026-08-05T10:00:00.000Z'},
@@ -33,6 +33,12 @@ assert.equal(relatorio.devedores.quantidade,2);
 assert.equal(relatorio.devedores.valor,6500);
 assert.equal(relatorio.devedores.vencidos,1);
 assert.equal(relatorio.devedores.valorVencido,4000);
+const detalheMatrículas=detalharCategoria(bancoRelatorio,{categoria:'Matrículas',tipo:'entrada',inicio:'2026-08-01',fim:'2026-08-31'});
+assert.equal(detalheMatrículas.ok,true);
+assert.equal(detalheMatrículas.itens.length,1);
+assert.equal(detalheMatrículas.totais.realizado,10000);
+assert.equal(detalheMatrículas.totais.projetado,10000);
+assert.equal(detalharCategoria(bancoRelatorio,{categoria:'Matrículas',tipo:'invalido'}).ok,false);
 const pdf=gerarPdfRelatorio(relatorio),textoPdf=new TextDecoder('latin1').decode(pdf);
 assert.equal(textoPdf.startsWith('%PDF-1.4'),true);
 assert.equal(textoPdf.includes('CELC Financeiro'),true);
@@ -47,4 +53,5 @@ assert.equal(interfaceRelatorios.includes('Resultado por categoria'),true);
 assert.equal(interfaceRelatorios.includes('Arrecadado no período'),true);
 assert.equal(interfaceRelatorios.includes('Gasto no período'),true);
 assert.equal(interfaceRelatorios.includes('category-total-card'),true);
-console.log('25 asserções aprovadas — cálculos, dashboard por categoria e PDF dos relatórios financeiros.');
+assert.equal(interfaceRelatorios.includes('data-detalhar-categoria'),true);
+console.log('31 asserções aprovadas — cálculos, dashboard, detalhamento por categoria e PDF dos relatórios financeiros.');

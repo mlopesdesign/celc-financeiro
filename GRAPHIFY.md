@@ -34,6 +34,7 @@
 | `devedores:baixar` | src/js/app.js |
 | `categorias:listar` | src/js/app.js |
 | `relatorios:resumo` | src/js/app.js |
+| `relatorios:detalharCategoria` | src/js/app.js |
 | `categorias:listar` | src/js/app.js |
 | `lancamentos:listar` | src/js/app.js |
 | `lancamentos:baixar` | src/js/app.js |
@@ -81,6 +82,7 @@
 | `backup:criar` | src/js/backend/servidor.js |
 | `backup:restaurar` | src/js/backend/servidor.js |
 | `relatorios:resumo` | src/js/backend/servidor.js |
+| `relatorios:detalharCategoria` | src/js/backend/servidor.js |
 | `relatorios:exportar` | src/js/backend/servidor.js |
 | `relatorios:exportarPdf` | src/js/backend/servidor.js |
 | `acesso:trocarSenha` | src/js/backend/servidor.js |

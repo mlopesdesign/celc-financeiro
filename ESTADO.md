@@ -1,6 +1,6 @@
 # Estado do projeto — CELC Financeiro
 
-**Versão em preparação:** `0.2.21`
+**Versão em preparação:** `0.2.22`
 **Estado de validação:** categorias excluídas permanecem excluídas após reabrir; relatórios abrangem período mensal, anual, personalizado e todas as categorias cadastradas; fechamento e atualização exigem backup silencioso concluído.
 **Aplicação:** desktop Windows para a gestão financeira do Colégio CELC.  
 **Stack:** JavaScript ESM, HTML/CSS puro, sql.js (SQLite local), Neutralino.js 6.3.0 e instalador NSIS.
@@ -125,6 +125,12 @@ Após duas tentativas de atualização reportadas como fracassadas, a correção
 - A tela Relatórios passa a ter a aba própria **Por categoria**, sem depender das abas separadas de Entradas e Despesas.
 - A aba é um dashboard de cartões: cada categoria exibe o total efetivamente arrecadado ou gasto no período selecionado e sua quantidade de lançamentos; categorias sem movimentação são exibidas com total zero.
 - A atualização online continua distribuindo exclusivamente `resources.neu`; o instalador não é baixado nem executado por esse fluxo.
+
+## Detalhamento e projeção mensal auditada — 0.2.22
+
+- Cada cartão em **Relatórios → Por categoria** passa a oferecer o botão **Detalhar**, que abre todas as movimentações da categoria no intervalo selecionado, com competência, vencimento, valor e situação.
+- A projeção mensal do dashboard foi corrigida: além das previsões e pendências da competência atual, inclui pendências vencidas de competências anteriores e não inclui competências futuras.
+- `tests/projecao.mjs` impede regressão no cálculo de saldo projetado com itens vencidos e futuros; `tests/relatorios.mjs` valida o detalhamento por categoria.
 
 ## Caixa diário com competência — 0.2.13
 
