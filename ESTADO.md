@@ -1,11 +1,29 @@
 # Estado do projeto — CELC Financeiro
 
-**Versão em preparação:** `0.2.23`
+**Versão atual:** `0.2.24`
 **Estado de validação:** categorias excluídas permanecem excluídas após reabrir; relatórios abrangem período mensal, anual, personalizado e todas as categorias cadastradas; fechamento e atualização exigem backup silencioso concluído.
 **Aplicação:** desktop Windows para a gestão financeira do Colégio CELC.  
 **Stack:** JavaScript ESM, HTML/CSS puro, sql.js (SQLite local), Neutralino.js 6.3.0 e instalador NSIS.
 
 ## Estado atual — correção retomada (2026-09-01)
+
+### Pagamentos parciais e comparativo mensal — 2026-10-20
+
+- Despesas e Contas a pagar abrem o formulário com Saída fixa; o lançamento não volta ao padrão Entrada.
+- Ao selecionar uma descrição existente, o formulário reutiliza categoria, valor integral, recorrência e dia de vencimento do último registro utilizado. Não copia pagamentos nem cria lançamentos automaticamente.
+- Uma única despesa recebe vários pagamentos datados e com forma de pagamento. Valor integral, total pago e saldo ficam separados. Novas linhas são oferecidas enquanto existir saldo.
+- O histórico de pagamentos usa a tabela `caixa_diario` já existente, vinculada pelo lançamento. Não há migração destrutiva nem reclassificação de registros do cliente.
+- Relatórios e projeção contabilizam os valores parciais e o saldo restante. O fluxo usa a data efetiva de cada parte; os totais por categoria usam a competência da despesa.
+- O dashboard compara a competência selecionada com a anterior, permite filtrar outros meses e mostra uma base de provisão identificada como média histórica.
+- As categorias do dashboard abrem histórico mensal com todos os lançamentos, totais pagos, saldo e filtro em popup com rolagem oculta.
+- As escritas financeiras da API usam fila e transação SQLite para impedir baixa duplicada e salvar a despesa junto dos pagamentos de forma atômica.
+- Testes de regras executados com banco fictício isolado: persistência, reabertura, preservação de registros anteriores, rollback de lote inválido, pagamentos acima do saldo, estorno e chamadas concorrentes.
+- Interface validada em Chrome headless sem ocupar a área de trabalho. O banco do cliente não foi aberto nem modificado.
+- Pacote 0.2.24 conferido por extração do `resources.neu`, com fontes idênticas às testadas.
+- Instalador validado com `/S /VALIDATE` em pasta temporária: exit 0, pacote idêntico e registro da instalação existente preservado. Essa opção não abre o aplicativo nem grava atalhos, registro ou dados do cliente.
+- Artefatos: `Release/v0.2.24/`; canal de distribuição: https://github.com/mlopesdesign/celc-financeiro/releases/tag/v0.2.24.
+- SHA-256 resources.neu: `F2C94860DED12706CA35E37036CC95AC9CF43CB765AD97132AC36EB3AF2B0AC6`.
+- SHA-256 Setup: `E5BBD5F4C30001AD00B780E13F6E1FD80E053BEC641CC9F2D2A8837CAB179846`.
 
 Após duas tentativas de atualização reportadas como fracassadas, a correção foi retomada nesta versão. O banco externo deve ser preservado durante toda a validação.
 

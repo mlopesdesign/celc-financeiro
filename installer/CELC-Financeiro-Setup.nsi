@@ -4,22 +4,22 @@ SetCompressor /SOLID zlib
 ManifestDPIAware true
 
 !define APP_NAME "CELC Financeiro"
-!define APP_VERSION "0.2.23"
+!define APP_VERSION "0.2.24"
 !define APP_PUBLISHER "ML Lopes Design"
 !define APP_EXE "CELC Financeiro.exe"
 !define APP_REGKEY "Software\\ML Lopes Design\\CELC Financeiro"
 !define UNINSTALL_KEY "Software\\Microsoft\\Windows\\CurrentVersion\\Uninstall\\CELC Financeiro"
 
 Name "${APP_NAME} ${APP_VERSION}"
-OutFile "..\\Release\\CELC-Financeiro-Setup-0.2.23.exe"
-VIProductVersion "0.2.23.0"
+OutFile "..\\Release\\CELC-Financeiro-Setup-0.2.24.exe"
+VIProductVersion "0.2.24.0"
 VIAddVersionKey "ProductName" "CELC Financeiro"
-VIAddVersionKey "ProductVersion" "0.2.23"
+VIAddVersionKey "ProductVersion" "0.2.24"
 VIAddVersionKey "CompanyName" "ML Lopes Design"
 VIAddVersionKey "LegalCopyright" "© 2026 ML Lopes Design"
 VIAddVersionKey "FileDescription" "Instalador do CELC Financeiro"
-VIAddVersionKey "FileVersion" "0.2.23"
-VIAddVersionKey "OriginalFilename" "CELC-Financeiro-Setup-0.2.23.exe"
+VIAddVersionKey "FileVersion" "0.2.24"
+VIAddVersionKey "OriginalFilename" "CELC-Financeiro-Setup-0.2.24.exe"
 Icon "..\assets\celc-app-icon.ico"
 UninstallIcon "..\assets\celc-app-icon.ico"
 InstallDir "$LOCALAPPDATA\\Programs\\CELC Financeiro"
@@ -30,6 +30,8 @@ ShowUninstDetails show
 
 !include "MUI2.nsh"
 !include "LogicLib.nsh"
+!include "FileFunc.nsh"
+Var ValidacaoIsolada
 !insertmacro MUI_PAGE_WELCOME
 !insertmacro MUI_PAGE_DIRECTORY
 !insertmacro MUI_PAGE_INSTFILES
@@ -41,6 +43,13 @@ ShowUninstDetails show
 !insertmacro MUI_LANGUAGE "PortugueseBR"
 
 Function .onInit
+  ${GetParameters} $2
+  ClearErrors
+  ${GetOptions} $2 "/VALIDATE" $3
+  ${IfNot} ${Errors}
+    StrCpy $ValidacaoIsolada "1"
+    Return
+  ${EndIf}
   ReadRegStr $0 HKCU "${APP_REGKEY}" "Version"
   ReadRegStr $1 HKCU "${APP_REGKEY}" "InstallDir"
   ${If} $0 != ""
@@ -56,6 +65,9 @@ Section "CELC Financeiro" SEC_APP
   Rename "$INSTDIR\\CELC_Financeiro.exe" "$INSTDIR\\${APP_EXE}"
   File "..\\dist\\CELC Financeiro\\resources.neu"
   File /oname=celc-app-icon.ico "..\\assets\\celc-app-icon.ico"
+  ${If} $ValidacaoIsolada == "1"
+    Goto fim_instalacao
+  ${EndIf}
   InitPluginsDir
   SetOutPath "$PLUGINSDIR"
   File /oname=MicrosoftEdgeWebView2RuntimeInstallerX64.exe "..\\tools\\release\\MicrosoftEdgeWebView2RuntimeInstallerX64.exe"
@@ -75,6 +87,7 @@ Section "CELC Financeiro" SEC_APP
   CreateDirectory "$SMPROGRAMS\\CELC Financeiro"
   CreateShortcut "$SMPROGRAMS\\CELC Financeiro\\CELC Financeiro.lnk" "$INSTDIR\\${APP_EXE}" "" "$INSTDIR\\celc-app-icon.ico" 0
   CreateShortcut "$DESKTOP\\CELC Financeiro.lnk" "$INSTDIR\\${APP_EXE}" "" "$INSTDIR\\celc-app-icon.ico" 0
+  fim_instalacao:
 SectionEnd
 
 Section "Uninstall"
