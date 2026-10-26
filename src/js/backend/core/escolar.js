@@ -49,7 +49,7 @@ export async function excluirCaixaDiario(db,id,u={id:'direcao-celc'}){
   if(item.tipo==='despesa'&&lancamento){
     const gerado=lancamento.descricao.startsWith('Caixa diário - despesa');
     if(gerado)await db.executar('DELETE FROM lancamentos WHERE id=?',[lancamento.id]);
-    else {const situacao=lancamento.vencimento&&lancamento.vencimento<item.data?'vencido':'pendente';await db.executar('UPDATE lancamentos SET situacao=?,liquidado_em=?,atualizado_em=? WHERE id=?',[situacao,null,t,lancamento.id]);}
+    else {const restantes=db.listarCaixaDiario().filter(x=>x.tipo==='despesa'&&x.lancamentoId===lancamento.id&&x.id!==caixaId),pago=restantes.reduce((s,x)=>s+x.valorCentavos,0),situacao=pago>=lancamento.valorCentavos?'pago':lancamento.vencimento&&lancamento.vencimento<item.data?'vencido':'pendente';await db.executar('UPDATE lancamentos SET situacao=?,liquidado_em=?,atualizado_em=? WHERE id=?',[situacao,situacao==='pago'?lancamento.liquidadoEm:null,t,lancamento.id]);}
   }
   await db.executar('DELETE FROM caixa_diario WHERE id=?',[caixaId]);
   await db.executar('INSERT INTO auditoria (usuario_id,acao,entidade,entidade_id,criado_em,detalhes) VALUES (?,?,?,?,?,?)',[u.id,'excluir','caixa_diario',caixaId,item.origem||'']);

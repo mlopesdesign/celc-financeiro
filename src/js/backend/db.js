@@ -64,6 +64,22 @@ export async function abrirBancoSeguro(){
     const banco=adaptador(sql,'sqlite',caminho);
     const executar=banco.executar;
     banco.executar=async(...args)=>{await executar(...args);await banco.aguardarPersistencia();};
+    banco.emTransacao=async tarefa=>{
+      await banco.aguardarPersistencia();
+      const executarPersistente=banco.executar;
+      banco.executar=async(q,p=[])=>{sql.run(q,p);};
+      sql.run('BEGIN IMMEDIATE');
+      try{
+        const resultado=await tarefa();
+        if(resultado?.ok===false){sql.run('ROLLBACK');return resultado;}
+        sql.run('COMMIT');
+        await executarPersistente('SELECT 1');
+        return resultado;
+      }catch(erro){
+        try{sql.run('ROLLBACK');}catch{}
+        throw erro;
+      }finally{banco.executar=executarPersistente;}
+    };
     await banco.executar("UPDATE lancamentos SET categoria=COALESCE(NULLIF(categoria,''),'Sem categoria')");
     const confirmado=await Neutralino.filesystem.readBinaryFile(caminho);
     const binario=normalizarBytes(confirmado);
