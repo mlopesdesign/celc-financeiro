@@ -509,9 +509,10 @@ function ligarBase(){
   };
 }
 
-// Janela sempre visível: tamanho fixo 800 x 600 centralizado (maximizada = monitor inteiro).
+// Janela sempre visível: tamanho fixo 1280 x 960 centralizado (mínimo 800 x 600; maximizada = monitor inteiro).
 // O Windows grava -32000/32767 como posição de janela minimizada; se ela voltar fora da tela, traz para o centro.
-const JANELA_NORMAL={width:800,height:600};
+const JANELA_NORMAL={width:1280,height:960};
+const JANELA_MINIMA={width:800,height:600};
 function janelaForaDaTela(pos,tam,tela){
   const x=Number(pos?.x),y=Number(pos?.y),w=Number(tam?.width),h=Number(tam?.height);
   if(![x,y,w,h].every(Number.isFinite)||w<200||h<150)return true;
@@ -531,7 +532,7 @@ async function garantirJanelaNaTela(){
     const s=window.screen||{};
     const tela=s.isExtended===true?{width:0,height:0}:{left:Number(s.availLeft||0),top:Number(s.availTop||0),width:Number(s.availWidth||s.width||0),height:Number(s.availHeight||s.height||0)};
     if(!janelaForaDaTela(pos,tam,tela))return;
-    await janela.setSize({...JANELA_NORMAL,minWidth:JANELA_NORMAL.width,minHeight:JANELA_NORMAL.height}).catch(()=>{});
+    await janela.setSize({...JANELA_NORMAL,minWidth:JANELA_MINIMA.width,minHeight:JANELA_MINIMA.height}).catch(()=>{});
     await janela.center();
   }catch{}
 }

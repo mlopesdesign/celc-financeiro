@@ -1,9 +1,18 @@
 # Estado do projeto — CELC Financeiro
 
-**Versão atual:** `0.2.25`
+**Versão atual:** `0.2.26`
 **Estado de validação:** categorias excluídas permanecem excluídas após reabrir; relatórios abrangem período mensal, anual, personalizado e todas as categorias cadastradas; fechamento e atualização exigem backup silencioso concluído.
 **Aplicação:** desktop Windows para a gestão financeira do Colégio CELC.  
 **Stack:** JavaScript ESM, HTML/CSS puro, sql.js (SQLite local), Neutralino.js 6.3.0 e instalador NSIS.
+
+## Janela 1280 x 960 - 0.2.26 (2026-10-30)
+
+- Pedido do Marcio: janela normal (restaurada) passa de 800 x 600 para 1280 x 960 (aresta longa 1280, proporção 4:3), centralizada. Mínimo continua 800 x 600; maximizada = monitor inteiro; `useSavedState: false` mantido.
+- `neutralino.config.json`: width 1280, height 960 (minWidth 800, minHeight 600). `src/js/app.js`: `JANELA_NORMAL` 1280 x 960 e `JANELA_MINIMA` 800 x 600 na guarda de janela fora da tela. Versão 0.2.26 em config, package.json, ambiente.js e instalador.
+- Validação: 13 suítes de teste aprovadas; `resources.neu` contém 0.2.26, 1280 x 960 e o mínimo 800 x 600. Setup instalado neste computador (registro 0.2.26). Por Win32: abertura 320,60 1280x960; minimizar → restaurar 320,60 1280x960; maximizar -8,-8 1936x1048; minimizar maximizada → volta maximizada; restaurar 320,60 1280x960.
+- Problema encontrado: o Setup com `/S` mostra a caixa "Versão anterior ... foi reconhecida" (MessageBox da linha 57 do .nsi sem `/SD IDOK`) e fica parado esperando OK. Foi fechada por Win32 (WM_CLOSE). Corrigir na próxima versão: `/SD IDOK` nas MessageBox das linhas 57 e 105.
+- Artefatos: `Release/v0.2.26/`. SHA-256 resources.neu `FE17CC0CBD6F2D2E8D9DED54C27F294A56EB48F288A61DCA0312FCCD81F3B982`; Setup `9303BCDA7DB9531BCB020B8F71CCC0543F5DD54171C4E626036B3E1E732D2F5D`.
+- Pendente: push, tag no GitHub e GitHub Release da v0.2.26 (publicação aguardando liberação do Marcio). Backup dos arquivos anteriores em `_backup_0.2.25_pre-1280/`.
 
 ## Janela fixa 800 x 600 - 0.2.25 (2026-10-30)
 
