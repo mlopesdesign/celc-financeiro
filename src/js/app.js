@@ -4,7 +4,7 @@ import {criarApiFinanceira as criarApi} from './backend/servidor.js';
 import {valorRealizado,saldoDoLancamento,pagamentosDaDespesa} from './backend/core/pagamentos.js';
 import {verificarAtualizacao,instalarAtualizacao} from './backend/atualizador.js';
 
-const APP_VERSION='0.2.24';
+const APP_VERSION='0.2.25';
 const hoje=new Date().toISOString().slice(0,10);
 const $=seletor=>document.querySelector(seletor);
 const $$=seletor=>Array.from(document.querySelectorAll(seletor));
@@ -509,6 +509,37 @@ function ligarBase(){
   };
 }
 
+// Janela sempre visível: tamanho fixo 800 x 600 centralizado (maximizada = monitor inteiro).
+// O Windows grava -32000/32767 como posição de janela minimizada; se ela voltar fora da tela, traz para o centro.
+const JANELA_NORMAL={width:800,height:600};
+function janelaForaDaTela(pos,tam,tela){
+  const x=Number(pos?.x),y=Number(pos?.y),w=Number(tam?.width),h=Number(tam?.height);
+  if(![x,y,w,h].every(Number.isFinite)||w<200||h<150)return true;
+  if(Math.abs(x)>=30000||Math.abs(y)>=30000)return true;
+  const sw=Number(tela?.width||0),sh=Number(tela?.height||0);
+  if(!(sw>0&&sh>0))return false;
+  const left=Number(tela.left||0),top=Number(tela.top||0);
+  const visivel=Math.min(x+w,left+sw)-Math.max(x,left);
+  return visivel<120||y<top-10||y>top+sh-60;
+}
+async function garantirJanelaNaTela(){
+  const janela=window.Neutralino?.window;
+  if(!janela?.getPosition)return;
+  try{
+    if(await janela.isMinimized?.().catch(()=>false))return;
+    const [pos,tam]=await Promise.all([janela.getPosition(),janela.getSize()]);
+    const s=window.screen||{};
+    const tela=s.isExtended===true?{width:0,height:0}:{left:Number(s.availLeft||0),top:Number(s.availTop||0),width:Number(s.availWidth||s.width||0),height:Number(s.availHeight||s.height||0)};
+    if(!janelaForaDaTela(pos,tam,tela))return;
+    await janela.setSize({...JANELA_NORMAL,minWidth:JANELA_NORMAL.width,minHeight:JANELA_NORMAL.height}).catch(()=>{});
+    await janela.center();
+  }catch{}
+}
+function vigiarJanela(){
+  garantirJanelaNaTela();
+  window.Neutralino?.events?.on?.('windowFocus',()=>garantirJanelaNaTela())?.catch?.(()=>{});
+}
+
 function ativarBackupNoFechamento(){
   const neutralino=window.Neutralino;
   if(!neutralino?.events?.on)return;
@@ -529,6 +560,7 @@ async function iniciar(){
     window.Neutralino?.init?.();
     if(window.Neutralino){
       await new Promise(resolve=>window.addEventListener('ready',resolve,{once:true}));
+      vigiarJanela();
     }
     banco=await abrirBancoSeguro();
     await garantirAcesso(banco);

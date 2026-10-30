@@ -1,9 +1,19 @@
 # Estado do projeto — CELC Financeiro
 
-**Versão atual:** `0.2.24`
+**Versão atual:** `0.2.25`
 **Estado de validação:** categorias excluídas permanecem excluídas após reabrir; relatórios abrangem período mensal, anual, personalizado e todas as categorias cadastradas; fechamento e atualização exigem backup silencioso concluído.
 **Aplicação:** desktop Windows para a gestão financeira do Colégio CELC.  
 **Stack:** JavaScript ESM, HTML/CSS puro, sql.js (SQLite local), Neutralino.js 6.3.0 e instalador NSIS.
+
+## Janela fixa 800 x 600 - 0.2.25 (2026-10-30)
+
+- Causa: o Neutralino gravava a posição da janela em `.tmp\window_state.config.json`; quando o programa fechava minimizado, a posição de minimizada do Windows (x 32767, y -32768) era reaproveitada e a janela abria/restaurava fora da tela.
+- `neutralino.config.json`: janela normal 800 x 600 centralizada (também o mínimo), `useSavedState: false`, `maximize: false`; maximizada ocupa o monitor inteiro. `window.*` incluído no `nativeAllowList` para o app poder conferir a própria janela.
+- `src/js/app.js`: `garantirJanelaNaTela()` no boot e a cada `windowFocus` — se a janela estiver fora da tela, volta para 800 x 600 no centro.
+- Instalador: não usa Get-Process para encerrar processos; só a versão mudou.
+- Validação: 13 suítes de teste aprovadas; `resources.neu` contém 0.2.25, `useSavedState: false`, `window.*` e a guarda da janela. Setup instalado com `/S` neste computador; por Win32: abertura 560,240 800x600; minimizar → restaurar 560,240 800x600; maximizar -8,-8 1936x1048; minimizar maximizada → volta maximizada; restaurar 560,240 800x600. Fechamento normal (backup) ok; banco preservado.
+- Artefatos: `Release/v0.2.25/`. SHA-256 resources.neu `5E846F032A8291D4BBD22A1A1189D3F2328B8C73293D8136FB55EB0D5B55099C`; Setup `219B1680658692FB4F761CE39376419F6F400A3532D818C8B90B6349D4B739D1`.
+- Pendente: push, tag no GitHub e GitHub Release da v0.2.25 (publicação aguardando liberação do Marcio). Backup dos arquivos anteriores em `_backup_0.2.24_pre-janela/`.
 
 ## Estado atual — correção retomada (2026-09-01)
 
