@@ -13,6 +13,7 @@
 - `src/js/backend/core/categorias.js`
 - `src/js/backend/core/escolar.js`
 - `src/js/backend/core/lancamentos.js`
+- `src/js/backend/core/pagamentos.js`
 - `src/js/backend/core/relatorios.js`
 - `src/js/backend/db.js`
 - `src/js/backend/servidor.js`
@@ -25,6 +26,9 @@
 | Canal | Origem |
 |---|---|
 | `painel:resumo` | src/js/app.js |
+| `relatorios:resumo` | src/js/app.js |
+| `relatorios:resumo` | src/js/app.js |
+| `painel:historicoCategoria` | src/js/app.js |
 | `lancamentos:listar` | src/js/app.js |
 | `caixa:resumo` | src/js/app.js |
 | `caixa:registrar` | src/js/app.js |
@@ -54,11 +58,16 @@
 | `backup:restaurar` | src/js/app.js |
 | `backup:criar` | src/js/app.js |
 | `categorias:listar` | src/js/app.js |
+| `despesas:salvar` | src/js/app.js |
 | `lancamentos:editar` | src/js/app.js |
 | `lancamentos:criar` | src/js/app.js |
 | `backup:criar` | src/js/app.js |
 | `lancamentos:recorrencias` | src/js/app.js |
 | `lancamentos:atualizarVencidos` | src/js/app.js |
+| `despesas:salvar` | src/js/backend/servidor.js |
+| `despesas:pagar` | src/js/backend/servidor.js |
+| `painel:historicoCategoria` | src/js/backend/servidor.js |
+| `caixa:pagarDespesa` | src/js/backend/servidor.js |
 | `painel:resumo` | src/js/backend/servidor.js |
 | `lancamentos:listar` | src/js/backend/servidor.js |
 | `lancamentos:sugerirDescricoes` | src/js/backend/servidor.js |

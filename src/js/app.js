@@ -1,9 +1,10 @@
 import {abrirBancoSeguro} from './backend/db.js';
 import {garantirAcesso,validarAcesso} from './auth.js';
-import {criarApi} from './backend/servidor.js';
+import {criarApiFinanceira as criarApi} from './backend/servidor.js';
+import {valorRealizado,saldoDoLancamento,pagamentosDaDespesa} from './backend/core/pagamentos.js';
 import {verificarAtualizacao,instalarAtualizacao} from './backend/atualizador.js';
 
-const APP_VERSION='0.2.23';
+const APP_VERSION='0.2.24';
 const hoje=new Date().toISOString().slice(0,10);
 const $=seletor=>document.querySelector(seletor);
 const $$=seletor=>Array.from(document.querySelectorAll(seletor));
@@ -20,6 +21,7 @@ let relatorioAba='geral';
 let periodoRelatorio={inicio:`${hoje.slice(0,7)}-01`,fim:hoje};
 let fechamentoEmAndamento=false;
 let consultaDescricao=0;
+let mesDashboard=hoje.slice(0,7);
 
 const telas={
   dashboard:{rotulo:'PAINEL FINANCEIRO',titulo:'Visão geral',subtitulo:'Acompanhe a saúde financeira do Colégio CELC.',montar:dashboard},
@@ -58,18 +60,37 @@ function opcoesMeses(selecionado=hoje.slice(0,7)){
 }
 
 function tabela(itens,{acao=true}={}){
+  itens=itens.map(item=>{const pago=item.pagoCentavos??valorRealizado(banco,item),saldo=item.saldoCentavos??saldoDoLancamento(banco,item);return {...item,situacao:item.tipo==='despesa'&&pago>0&&saldo>0?`Parcial: ${brl(pago)} pagos · ${brl(saldo)} em aberto`:item.situacao};});
   const vazio=`<tr><td colspan="${acao?7:6}" class="empty">Nenhum lançamento encontrado.</td></tr>`;
   return `<div class="table-wrap"><table><thead><tr><th>DESCRIÇÃO</th><th>CATEGORIA</th><th>COMPETÊNCIA</th><th>VENCIMENTO</th><th>VALOR</th><th>SITUAÇÃO</th>${acao?'<th>AÇÕES</th>':''}</tr></thead><tbody>${itens.map(item=>`<tr><td><div class="title-stack"><b>${esc(item.descricao)}</b>${item.recorrencia==='mensal'?'<small>Fixo mensal</small>':''}</div></td><td>${esc(item.categoria)}</td><td>${dataPt(item.competencia)}</td><td>${dataPt(item.vencimento)}</td><td class="amount ${item.tipo==='entrada'?'in':'out'}">${item.tipo==='entrada'?'+':'-'} ${brl(item.valorCentavos)}</td><td><span class="status ${liquidado(item)?'received':'pending'}">${esc(item.situacao)}</span></td>${acao?`<td><div class="row-actions">${liquidado(item)?'<span class="action-note">Liquidado</span>':`<button data-baixar="${esc(item.id)}" class="text-button">${item.tipo==='entrada'?'Receber':'Pagar'}</button>`}<button data-editar="${esc(item.id)}" class="text-button">Editar</button><button data-excluir="${esc(item.id)}" class="text-button danger">Excluir</button></div></td>`:''}</tr>`).join('')||vazio}</tbody></table></div>`;
 }
 
 async function dashboard(){
-  const resumo=await api('painel:resumo',{referencia:hoje});
+  const resumo=await api('painel:resumo',{referencia:`${mesDashboard}-01`});
   const pendentes=resumo.recentes.filter(item=>!liquidado(item));
-  const porCategoria=resumo.doMes.filter(item=>item.tipo==='despesa'&&liquidado(item)).reduce((total,item)=>{
-    total[item.categoria]=(total[item.categoria]||0)+item.valorCentavos;
+  const porCategoria=resumo.doMes.filter(item=>item.tipo==='despesa').reduce((total,item)=>{
+    total[item.categoria]=(total[item.categoria]||0)+valorRealizado(banco,item);
     return total;
   },{});
-  return `<section class="summary-grid"><article class="summary-card"><div><p>Saldo disponível</p><h2>${brl(resumo.saldoDisponivel)}</h2><span class="neutral">Somente valores realizados</span></div></article><article class="summary-card"><div><p>Entradas realizadas</p><h2>${brl(resumo.entradas)}</h2><span class="positive">No mês</span></div></article><article class="summary-card"><div><p>Despesas realizadas</p><h2>${brl(resumo.despesas)}</h2><span class="negative">No mês</span></div></article><article class="summary-card"><div><p>Projeção mensal</p><h2>${brl(resumo.projecao)}</h2><span class="neutral">Inclui pendências e previsões</span></div></article></section><section class="content-grid"><article class="panel"><div class="panel-heading"><div><h3>Resultado do mês</h3><p>Realizado: ${brl(resumo.resultado)} · Projetado: ${brl(resumo.previsto)}</p></div></div><div class="metric-strip"><span>Recebido <b>${brl(resumo.entradas)}</b></span><span>Pago <b>${brl(resumo.despesas)}</b></span><span>Pendente <b>${brl(pendentes.reduce((s,item)=>s+item.valorCentavos,0))}</b></span></div></article><article class="panel"><div class="panel-heading"><div><h3>Despesas por categoria</h3><p>Valores pagos no mês</p></div></div><div class="category-list">${Object.entries(porCategoria).map(([nome,valor])=>`<span>${esc(nome)} <b>${brl(valor)}</b></span>`).join('')||'<span>Sem despesas pagas no período.</span>'}</div></article></section><section class="panel"><div class="panel-heading"><div><h3>Últimas movimentações</h3><p>${pendentes.length} pendência(s) aguardando baixa</p></div></div>${tabela(resumo.recentes.slice(0,8))}</section>`;
+  const comparativo=await comparativoDashboard();
+  return `<div class="toolbar"><label>Mês de referência<input type="month" id="mesDashboard" value="${mesDashboard}"></label></div><section class="summary-grid"><article class="summary-card"><div><p>Saldo disponível</p><h2>${brl(resumo.saldoDisponivel)}</h2><span class="neutral">Somente valores realizados</span></div></article><article class="summary-card"><div><p>Entradas realizadas</p><h2>${brl(resumo.entradas)}</h2><span class="positive">Na competência selecionada</span></div></article><article class="summary-card"><div><p>Despesas realizadas</p><h2>${brl(resumo.despesas)}</h2><span class="negative">Na competência selecionada</span></div></article><article class="summary-card"><div><p>Projeção mensal</p><h2>${brl(resumo.projecao)}</h2><span class="neutral">Inclui pendências e previsões</span></div></article></section><section class="content-grid"><article class="panel"><div class="panel-heading"><div><h3>Resultado do mês</h3><p>Realizado: ${brl(resumo.resultado)} · Projetado: ${brl(resumo.previsto)}</p></div></div><div class="metric-strip"><span>Recebido <b>${brl(resumo.entradas)}</b></span><span>Pago <b>${brl(resumo.despesas)}</b></span><span>Pendente <b>${brl(pendentes.reduce((s,item)=>s+item.saldoCentavos,0))}</b></span></div></article><article class="panel"><div class="panel-heading"><div><h3>Despesas por categoria</h3><p>Valores pagos na competência selecionada</p></div></div><div class="category-list">${Object.entries(porCategoria).map(([nome,valor])=>`<button class="text-button category-history-button" data-historico-categoria="${esc(nome)}">${esc(nome)} <b>${brl(valor)}</b></button>`).join('')||'<span>Sem despesas no período.</span>'}</div></article></section>${comparativo}<section class="panel"><div class="panel-heading"><div><h3>Últimas movimentações</h3><p>${pendentes.length} pendência(s) aguardando baixa</p></div></div>${tabela(resumo.recentes.slice(0,8))}</section>`;
+}
+
+function periodoMensal(mes){const [ano,numero]=mes.split('-').map(Number);return {inicio:`${mes}-01`,fim:`${mes}-${String(new Date(ano,numero,0).getDate()).padStart(2,'0')}`};}
+async function comparativoDashboard(){
+  const [ano,numero]=mesDashboard.split('-').map(Number),anterior=new Date(ano,numero-2,1,12),mesAnterior=`${anterior.getFullYear()}-${String(anterior.getMonth()+1).padStart(2,'0')}`;
+  const atual=await api('relatorios:resumo',periodoMensal(mesDashboard)),passado=await api('relatorios:resumo',periodoMensal(mesAnterior));
+  const linha=(mes,r)=>`<tr><td>${esc(mes.split('-').reverse().join('/'))}</td><td class="amount in">${brl(r.totais.entradasRealizadas)}</td><td class="amount out">${brl(r.totais.despesasRealizadas)}</td><td>${brl(r.totais.resultadoRealizado)}</td><td>${brl(r.totais.aReceber)}</td><td>${brl(r.totais.aPagar)}</td></tr>`;
+  const baseReceitas=Math.round((atual.totais.entradasProjetadas+passado.totais.entradasProjetadas)/2),baseDespesas=Math.round((atual.totais.despesasProjetadas+passado.totais.despesasProjetadas)/2);
+  return `<section class="panel"><h3>Comparativo mensal</h3><div class="table-wrap"><table><thead><tr><th>Competência</th><th>Recebido</th><th>Pago</th><th>Saldo realizado</th><th>A receber</th><th>A pagar</th></tr></thead><tbody>${linha(mesAnterior,passado)}${linha(mesDashboard,atual)}</tbody></table></div><h3>Base para provisão do próximo mês</h3><p class="subtitle">Média dos valores totais lançados nas duas competências, incluindo pendências. O mês em andamento pode estar incompleto.</p><div class="metric-strip"><span>Receitas <b>${brl(baseReceitas)}</b></span><span>Despesas <b>${brl(baseDespesas)}</b></span><span>Resultado de referência <b>${brl(baseReceitas-baseDespesas)}</b></span></div></section>`;
+}
+
+async function abrirHistoricoCategoria(categoria){
+  const grupos=await api('painel:historicoCategoria',{categoria}),modal=document.createElement('div');modal.className='modal-backdrop show';
+  const fechar=()=>{modal.remove();document.removeEventListener('keydown',teclado);},teclado=e=>{if(e.key==='Escape')fechar();};
+  modal.innerHTML=`<section class="modal category-history-modal" role="dialog" aria-modal="true" aria-label="${esc(categoria)}"><button type="button" class="close" aria-label="Fechar">×</button><h2>${esc(categoria)}</h2><label>Competência<select id="filtroHistoricoCategoria"><option value="">Todos os meses</option>${grupos.map(g=>`<option value="${g.mes}">${g.mes.split('-').reverse().join('/')}</option>`).join('')}</select></label><div id="historicoCategoriaMeses"></div></section>`;
+  const preencher=()=>{modal.querySelector('#historicoCategoriaMeses').innerHTML=grupos.filter(g=>!modal.querySelector('select').value||g.mes===modal.querySelector('select').value).map(g=>`<section class="history-month"><h3>${g.mes.split('-').reverse().join('/')}</h3><div class="metric-strip"><span>Total <b>${brl(g.total)}</b></span><span>Pago <b>${brl(g.pago)}</b></span><span>Em aberto <b>${brl(g.saldo)}</b></span></div>${tabela(g.itens,{acao:false})}</section>`).join('')||'<p>Nenhuma despesa nesta categoria.</p>';};
+  modal.querySelector('.close').onclick=fechar;modal.onclick=e=>{if(e.target===modal)fechar();};modal.querySelector('select').onchange=preencher;document.addEventListener('keydown',teclado);document.body.append(modal);preencher();modal.querySelector('.close').focus();
 }
 
 async function lista(tipo,situacoes){
@@ -102,8 +123,8 @@ async function abrirDetalhamentoCaixa(){
 async function listarDespesasDoCaixa(){
   const modal=$('#modalDetalhamentoCaixa'),alvo=$('#resultadosDespesaCaixa');if(!modal||!alvo)return;
   const busca=$('#buscaDespesaCaixa')?.value||'',itens=(await api('lancamentos:listar',{tipo:'despesa',busca})).filter(item=>!liquidado(item));
-  alvo.innerHTML=itens.map(item=>`<article class="expense-search-result"><div><b>${esc(item.descricao)}</b><small>${esc(item.categoria)}${item.recorrencia==='mensal'?' · Pagamento fixo mensal':''} · Competência atual: ${dataPt(item.competencia)}</small></div><div><strong>${brl(item.valorCentavos)}</strong><label>Mês de referência<select data-mes-despesa="${esc(item.id)}">${opcoesMeses(item.competencia?.slice(0,7)||hoje.slice(0,7))}</select></label><button class="text-button" data-pagar-despesa-caixa="${esc(item.id)}">Registrar pagamento</button></div></article>`).join('')||'<p class="subtitle">Nenhuma despesa em aberto encontrada.</p>';
-  $$('[data-pagar-despesa-caixa]').forEach(botao=>botao.onclick=async()=>{const registro=botao.closest('.expense-search-result'),competencia=registro?.querySelector('[data-mes-despesa]')?.value||hoje.slice(0,7),resposta=await api('caixa:pagarDespesa',{id:botao.dataset.pagarDespesaCaixa,data:modal.dataset.data,mesReferencia:competencia,formaPagamento:$('#formDespesaAvulsaCaixa').formaPagamento.value||'Dinheiro'});aviso(resposta.ok?'Despesa cadastrada paga e incluída no caixa.':resposta.erro,!resposta.ok);if(resposta.ok){modal.classList.remove('show');render();}});
+  alvo.innerHTML=itens.map(item=>`<article class="expense-search-result"><div><b>${esc(item.descricao)}</b><small>${esc(item.categoria)}${item.recorrencia==='mensal'?' · Pagamento fixo mensal':''} · Competência: ${dataPt(item.competencia)}</small><small>Total ${brl(item.valorCentavos)} · Pago ${brl(item.pagoCentavos||0)} · Saldo ${brl(item.saldoCentavos??item.valorCentavos)}</small></div><div><label>Valor deste pagamento (R$)<input data-valor-pagamento-caixa type="number" min="0.01" step="0.01" max="${((item.saldoCentavos??item.valorCentavos)/100).toFixed(2)}" value="${((item.saldoCentavos??item.valorCentavos)/100).toFixed(2)}"></label><button class="text-button" data-pagar-despesa-caixa="${esc(item.id)}">Registrar pagamento</button></div></article>`).join('')||'<p class="subtitle">Nenhuma despesa em aberto encontrada.</p>';
+  $$('[data-pagar-despesa-caixa]').forEach(botao=>botao.onclick=async()=>{botao.disabled=true;try{const registro=botao.closest('.expense-search-result'),valor=registro.querySelector('[data-valor-pagamento-caixa]').value,resposta=await api('caixa:pagarDespesa',{id:botao.dataset.pagarDespesaCaixa,data:modal.dataset.data,valorCentavos:Math.round(Number(valor)*100),formaPagamento:$('#formDespesaAvulsaCaixa').formaPagamento.value||'Dinheiro'});aviso(resposta.ok?'Pagamento registrado na despesa e no caixa.':resposta.erro,!resposta.ok);if(resposta.ok){modal.classList.remove('show');render();}}catch(erro){aviso(erro.message||'Não foi possível registrar o pagamento.',true);}finally{botao.disabled=false;}});
 }
 
 function tabelaDevedores(itens){
@@ -205,7 +226,10 @@ function abrirModal(item=null,predefinido={}){
   form.reset();
   $('#erroLancamento').textContent='';
   form.competencia.value=hoje;
-  form.tipo.value=item?.tipo||predefinido.tipo||'entrada';
+  form.tipo.value=item?.tipo||predefinido.tipo||(['despesas','pagar'].includes(tela)?'despesa':['entradas','receber'].includes(tela)?'entrada':'entrada');
+  form.tipo.disabled=Boolean(item)||['despesas','pagar','entradas','receber'].includes(tela)||Boolean(predefinido.tipo);
+  form.tipo.options[1].textContent='Saída';
+  form.dataset.tipoFixo=form.tipo.disabled?form.tipo.value:'';
   form.liquidacao.value=item&&liquidado(item)?'realizado':'aberto';
   form.recorrencia.value=item?.recorrencia||predefinido.recorrencia||'avulso';
   if(item){
@@ -220,7 +244,60 @@ function abrirModal(item=null,predefinido={}){
   atualizarTextoRecorrencia();
   preencherCategorias(item?.categoriaId);
   atualizarSugestoesDescricao();
+  prepararPagamentos(form,item);
   $('#modal').classList.add('show');
+}
+
+function prepararPagamentos(form,item){
+  $('#pagamentosDespesa')?.remove();
+  form.liquidacao.disabled=false;
+  form.valor.closest('label').firstChild.textContent=form.tipo.value==='despesa'?'Valor integral (R$)':'Valor (R$)';
+  form.liquidacao.innerHTML=form.tipo.value==='despesa'?'<option value="aberto">Sem pagamento agora</option><option value="realizado">Pagamento integral</option><option value="parcial">Pagamentos parciais</option>':'<option value="aberto">Ainda não realizado</option><option value="realizado">Realizado hoje</option>';
+  if(form.tipo.value!=='despesa'){form.liquidacao.value=item&&liquidado(item)?'realizado':'aberto';return;}
+  const pagamentos=item?pagamentosDaDespesa(banco,item):[],pago=item?valorRealizado(banco,item):0;
+  form.insertAdjacentHTML('beforeend',`<section id="pagamentosDespesa"><div class="metric-strip"><span>Total pago <b>${brl(pago)}</b></span><span>Saldo <b id="saldoDespesa">${brl((item?.valorCentavos||0)-pago)}</b></span></div>${pagamentos.length?`<h3>Pagamentos registrados</h3><div class="payment-history">${pagamentos.map(p=>`<p>${dataPt(p.data)} · ${brl(p.valorCentavos)} · ${esc(p.formaPagamento)}</p>`).join('')}</div>`:''}<div id="novosPagamentos" hidden><div id="linhasPagamentos"></div><button type="button" id="adicionarPagamento" class="outline-button">Adicionar pagamento</button></div></section>`);
+  form.dataset.pagoAnterior=String(pago);
+  const atualizarSaldo=()=>atualizarLinhasPagamento();
+  form.valor.oninput=atualizarSaldo;
+  form.liquidacao.value='aberto';
+  form.liquidacao.disabled=Boolean(item&&saldoDoLancamento(banco,item)===0);
+  form.liquidacao.onchange=()=>{
+    const area=$('#novosPagamentos');area.hidden=form.liquidacao.value==='aberto';$('#linhasPagamentos').innerHTML='';
+    if(!area.hidden)adicionarLinhaPagamento(form.liquidacao.value==='realizado'?Math.max(0,Math.round(Number(form.valor.value||0)*100)-pago):0);
+    $('#adicionarPagamento').hidden=form.liquidacao.value!=='parcial';
+    atualizarLinhasPagamento();
+  };
+  $('#adicionarPagamento').onclick=()=>adicionarLinhaPagamento();
+  form.liquidacao.closest('.two-columns').insertAdjacentElement('afterend',$('#pagamentosDespesa'));
+}
+
+function adicionarLinhaPagamento(valor=0){
+  const linha=document.createElement('div');linha.className='payment-row';
+  linha.innerHTML=`<label>Data<input data-pagamento-data type="date" value="${hoje}" required></label><label>Valor pago (R$)<input data-pagamento-valor type="number" min="0.01" step="0.01" value="${valor?(valor/100).toFixed(2):''}"></label><label>Forma<select data-pagamento-forma><option>Dinheiro</option><option>Pix</option><option>Transferência</option><option>Cartão</option><option>Boleto</option></select></label><button type="button" class="text-button danger" aria-label="Remover pagamento">Remover</button>`;
+  linha.querySelector('button').onclick=()=>{linha.remove();atualizarLinhasPagamento();};
+  linha.querySelector('[data-pagamento-valor]').oninput=atualizarLinhasPagamento;
+  $('#linhasPagamentos').append(linha);
+}
+
+function atualizarLinhasPagamento(){
+  const form=$('#formLancamento');if(!$('#saldoDespesa'))return;
+  const linhas=$$('#linhasPagamentos .payment-row'),totalNovo=linhas.reduce((s,l)=>s+Math.round(Number(l.querySelector('[data-pagamento-valor]').value||0)*100),0),saldo=Math.round(Number(form.valor.value||0)*100)-Number(form.dataset.pagoAnterior||0)-totalNovo;
+  $('#saldoDespesa').textContent=brl(saldo);
+  if(saldo<=0)linhas.filter(l=>l.querySelector('[data-pagamento-valor]').value==='').forEach(l=>l.remove());
+  if(form.liquidacao.value==='parcial'&&saldo>0&&(!linhas.length||linhas.at(-1).querySelector('[data-pagamento-valor]').value))adicionarLinhaPagamento();
+  $('#adicionarPagamento').hidden=form.liquidacao.value!=='parcial'||saldo<=0;
+}
+
+async function preencherHistoricoDescricao(){
+  const form=$('#formLancamento');if(edicao)return;
+  const tipo=form.tipo.value,nome=form.descricao.value.trim().toLocaleLowerCase('pt-BR');
+  const ultimo=banco.listarLancamentos().filter(x=>x.tipo===tipo&&x.descricao.trim().toLocaleLowerCase('pt-BR')===nome).sort((a,b)=>(b.atualizadoEm||b.criadoEm||b.competencia).localeCompare(a.atualizadoEm||a.criadoEm||a.competencia))[0];
+  if(!ultimo)return;
+  await preencherCategorias(ultimo.categoriaId||banco.listarCategorias().find(c=>c.tipo===tipo&&c.nome===ultimo.categoria)?.id);
+  if(form.tipo.value!==tipo||form.descricao.value.trim().toLocaleLowerCase('pt-BR')!==nome)return;
+  form.valor.value=(ultimo.valorCentavos/100).toFixed(2);form.recorrencia.value=ultimo.recorrencia;
+  if(ultimo.vencimento){const mes=form.competencia.value.slice(0,7),periodo=periodoMensal(mes);form.vencimento.value=`${mes}-${String(Math.min(Number(ultimo.vencimento.slice(8,10)),Number(periodo.fim.slice(8,10)))).padStart(2,'0')}`;}
+  atualizarTextoRecorrencia();form.valor.dispatchEvent(new Event('input'));
 }
 
 function atualizarTextoRecorrencia(){
@@ -241,7 +318,11 @@ async function filtrarTabela(){
 }
 
 function ligarEventos(){
+  $('#mesDashboard')&&($('#mesDashboard').onchange=e=>{if(/^\d{4}-\d{2}$/.test(e.target.value)){mesDashboard=e.target.value;render();}});
+  $$('[data-historico-categoria]').forEach(botao=>botao.onclick=()=>abrirHistoricoCategoria(botao.dataset.historicoCategoria));
   $$('[data-baixar]').forEach(botao=>botao.onclick=async()=>{
+    const item=banco.listarLancamentos().find(x=>x.id===botao.dataset.baixar);
+    if(item?.tipo==='despesa'){abrirModal(item);return;}
     const resposta=await api('lancamentos:baixar',{id:botao.dataset.baixar});
     aviso(resposta.ok?'Lançamento liquidado.':resposta.erro,!resposta.ok);
     render();
@@ -261,7 +342,7 @@ function ligarEventos(){
     aviso(resposta.ok?'Lançamento excluído.':resposta.erro,!resposta.ok);
     render();
   });
-  $('#novoModulo')&&($('#novoModulo').onclick=()=>abrirModal());
+  $('#novoModulo')&&($('#novoModulo').onclick=()=>abrirModal(null,{tipo:$('#tabelaModulo').dataset.tipo}));
   $('#busca')&&($('#busca').oninput=filtrarTabela);
   $('#exportar')&&($('#exportar').onclick=async()=>{
     const resposta=await api('relatorios:exportar',periodoRelatorio);
@@ -391,15 +472,23 @@ function ligarBase(){
     atualizarTextoRecorrencia();
     preencherCategorias();
     atualizarSugestoesDescricao();
+    prepararPagamentos(form,edicao);
   };
-  $('#formLancamento').descricao.oninput=atualizarSugestoesDescricao;
+  $('#formLancamento').descricao.oninput=()=>{atualizarSugestoesDescricao();preencherHistoricoDescricao();};
+  $('#formLancamento').descricao.onchange=preencherHistoricoDescricao;
   $('#formLancamento').onsubmit=async evento=>{
     evento.preventDefault();
     const form=evento.currentTarget;
     const dadosForm=Object.fromEntries(new FormData(form));
     const categoria=(await api('categorias:listar')).find(item=>item.id===dadosForm.categoriaId);
-    const dados={...dadosForm,categoria:categoria?.nome||'',liquidado:dadosForm.liquidacao==='realizado',valorCentavos:Math.round(Number(dadosForm.valor)*100)};
-    const resposta=edicao?await api('lancamentos:editar',{...dados,id:edicao.id}):await api('lancamentos:criar',dados);
+    const tipo=form.dataset.tipoFixo||form.tipo.value;
+    const dados={...dadosForm,tipo,categoria:categoria?.nome||'',liquidado:dadosForm.liquidacao==='realizado',valorCentavos:Math.round(Number(dadosForm.valor)*100)};
+    const pagamentos=tipo==='despesa'&&form.liquidacao.value!=='aberto'?$$('#linhasPagamentos .payment-row').filter(l=>l.querySelector('[data-pagamento-valor]').value!=='').map(l=>({data:l.querySelector('[data-pagamento-data]').value,valorCentavos:Math.round(Number(l.querySelector('[data-pagamento-valor]').value)*100),formaPagamento:l.querySelector('[data-pagamento-forma]').value})):[];
+    if(tipo==='despesa'&&form.liquidacao.value!=='aberto'&&!form.liquidacao.disabled&&!pagamentos.length){$('#erroLancamento').textContent='Adicione pelo menos um pagamento.';return;}
+    if(tipo==='despesa'&&form.liquidacao.value==='realizado'&&pagamentos.reduce((s,p)=>s+p.valorCentavos,0)!==dados.valorCentavos-(edicao?valorRealizado(banco,edicao):0)){$('#erroLancamento').textContent='O pagamento integral deve corresponder ao saldo da despesa.';return;}
+    const botao=form.querySelector('button.primary-action');botao.disabled=true;
+    let resposta;
+    try{resposta=tipo==='despesa'?await api('despesas:salvar',{...dados,id:edicao?.id,pagamentos}):edicao?await api('lancamentos:editar',{...dados,id:edicao.id}):await api('lancamentos:criar',dados);}catch(erro){$('#erroLancamento').textContent=`Não foi possível salvar: ${erro.message||erro}`;return;}finally{botao.disabled=false;}
     if(!resposta.ok){
       $('#erroLancamento').textContent=resposta.erro;
       return;
