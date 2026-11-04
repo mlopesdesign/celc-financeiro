@@ -10,7 +10,10 @@
 - A API deixava toda despesa com pagamento no `caixa_diario` impossibilitada de excluir, embora a tela exibisse a ação **Excluir**.
 - `excluirLancamento` agora remove os pagamentos vinculados pelo ID, remove o lançamento e registra a auditoria na mesma transação da API.
 - O teste físico de pagamentos cria uma despesa errada com pagamento, exclui a despesa e confirma que não sobra lançamento nem pagamento órfão.
-- A versão foi incrementada nos cinco pontos obrigatórios; build, Setup, release e publicação ainda são pendências desta correção.
+- A versão foi incrementada nos cinco pontos obrigatórios; build, Setup, release e publicação foram concluídos.
+- Commit de integração no `main`: `4de9b41`; tag: `v0.2.27`; release: https://github.com/mlopesdesign/celc-financeiro/releases/tag/v0.2.27.
+- SHA-256 publicado: `resources.neu` `082115B9F314A1A7EE19CE6E3C96423A80AC3BC19200B2834C9D8B3038C96856`; Setup `D0DC1538E84502DD75CF40613FAC6476F8751196EFE7D3C376B610186318E368`.
+- A atualização online substitui somente `resources.neu`; o banco externo do cliente não é apagado nem substituído.
 
 ## Janela 1280 x 960 - 0.2.26 (2026-10-30)
 
