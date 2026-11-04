@@ -36,7 +36,7 @@ try{
   const antesErro=JSON.stringify(banco.listarLancamentos()),caixaAntes=banco.listarCaixaDiario().length;
   assert.equal((await api('despesas:salvar',{...dados,descricao:'Não deve existir',pagamentos:[{data:'2026-10-01',valorCentavos:50000},{data:'2026-10-02',valorCentavos:200000}]})).ok,false);
   assert.equal(JSON.stringify(banco.listarLancamentos()),antesErro,'rollback do lançamento inválido');assert.equal(banco.listarCaixaDiario().length,caixaAntes,'rollback dos pagamentos');
-  assert.equal((await api('lancamentos:excluir',{id:criado.id})).ok,false,'protege despesa com pagamentos');
+  assert.equal(banco.listarLancamentos().some(x=>x.id===criado.id),true,'mantém a despesa para validar os pagamentos');
   banco=await abrirBancoSeguro();api=criarApiFinanceira({banco,Neutralino});
   lista=await api('lancamentos:listar',{tipo:'despesa'});assert.equal(lista[0].pagoCentavos,100000,'pagamentos sobrevivem à reabertura');assert.equal(lista[0].pagamentos.length,2);
   assert.equal((await api('despesas:pagar',{id:criado.id,data:'2026-11-02',valorCentavos:100000})).ok,true);
@@ -48,5 +48,9 @@ try{
   const pagamento=banco.listarCaixaDiario().find(x=>x.data==='2026-11-02');assert.equal((await api('caixa:excluir',{id:pagamento.id})).ok,true);
   lista=await api('lancamentos:listar',{tipo:'despesa'});assert.equal(lista[0].saldoCentavos,100000);assert.equal(lista[0].pagoCentavos,100000,'estorno conserva pagamentos restantes');
   const resultados=await Promise.all([api('despesas:pagar',{id:criado.id,data:'2026-11-03',valorCentavos:100000}),api('despesas:pagar',{id:criado.id,data:'2026-11-03',valorCentavos:100000})]);assert.equal(resultados.filter(r=>r.ok).length,1,'fila impede duas baixas simultâneas');
+  const errada=await api('despesas:salvar',{...dados,descricao:'Despesa errada para excluir',valorCentavos:1000,pagamentos:[{data:'2026-11-04',valorCentavos:1000,formaPagamento:'Pix'}]});assert.equal(errada.ok,true,'cria despesa de teste com pagamento');
+  assert.equal((await api('lancamentos:excluir',{id:errada.id})).ok,true,'permite excluir despesa errada com pagamento');
+  assert.equal(banco.listarLancamentos().some(x=>x.id===errada.id),false,'remove a despesa errada');
+  assert.equal(banco.listarCaixaDiario().some(x=>x.lancamentoId===errada.id),false,'remove o pagamento vinculado');
   console.log('Pagamentos parciais: SQLite físico, reabertura, rollback, saldo, caixa, relatórios, histórico e concorrência aprovados.');
 }finally{delete globalThis.window;delete globalThis.Neutralino;await rm(pasta,{recursive:true,force:true});}

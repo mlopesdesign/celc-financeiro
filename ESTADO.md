@@ -1,9 +1,16 @@
 # Estado do projeto — CELC Financeiro
 
-**Versão atual:** `0.2.26`
-**Estado de validação:** categorias excluídas permanecem excluídas após reabrir; relatórios abrangem período mensal, anual, personalizado e todas as categorias cadastradas; fechamento e atualização exigem backup silencioso concluído.
+**Versão atual:** `0.2.27`
+**Estado de validação:** categorias excluídas permanecem excluídas após reabrir; relatórios abrangem período mensal, anual, personalizado e todas as categorias cadastradas; fechamento e atualização exigem backup silencioso concluído; exclusão de despesa remove também pagamentos vinculados.
 **Aplicação:** desktop Windows para a gestão financeira do Colégio CELC.  
 **Stack:** JavaScript ESM, HTML/CSS puro, sql.js (SQLite local), Neutralino.js 6.3.0 e instalador NSIS.
+
+## Exclusão de despesa com pagamento — 0.2.27 (2026-11-04)
+
+- A API deixava toda despesa com pagamento no `caixa_diario` impossibilitada de excluir, embora a tela exibisse a ação **Excluir**.
+- `excluirLancamento` agora remove os pagamentos vinculados pelo ID, remove o lançamento e registra a auditoria na mesma transação da API.
+- O teste físico de pagamentos cria uma despesa errada com pagamento, exclui a despesa e confirma que não sobra lançamento nem pagamento órfão.
+- A versão foi incrementada nos cinco pontos obrigatórios; build, Setup, release e publicação ainda são pendências desta correção.
 
 ## Janela 1280 x 960 - 0.2.26 (2026-10-30)
 
