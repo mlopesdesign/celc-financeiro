@@ -1,12 +1,12 @@
 import assert from 'node:assert/strict';
 import { compararVersoes } from '../src/js/backend/core/atualizador.js';
-import { caminhoExecutavelAtualizacao, comandoAplicadorAtualizacao, verificarAtualizacao } from '../src/js/backend/atualizador.js';
+import { caminhoExecutavelAtualizacao, comandoAplicadorAtualizacao, sha256Pacote, validarHashPacote, verificarAtualizacao } from '../src/js/backend/atualizador.js';
 assert.equal(compararVersoes('0.1.4','0.1.5'),1);
 assert.equal(compararVersoes('v1.2.0','1.2.0'),0);
 assert.equal(compararVersoes('2.10.0','2.9.9'),-1);
 assert.equal(compararVersoes('1.0','1.0.0'),0);
 
-const manifesto={applicationId:'com.mllopesdesign.celcfinanceiro',version:'0.2.3',resourcesURL:'https://github.com/mlopesdesign/celc-financeiro/releases/download/v0.2.3/resources.neu'};
+const manifesto={applicationId:'com.mllopesdesign.celcfinanceiro',version:'0.2.3',resourcesURL:'https://github.com/mlopesdesign/celc-financeiro/releases/download/v0.2.3/resources.neu',resourcesSha256:'0'.repeat(64)};
 const nativo={os:{execCommand:async comando=>{
   assert.match(comando,/curl\.exe/);
   return {exitCode:0,stdOut:JSON.stringify(manifesto)};
@@ -32,4 +32,8 @@ assert.throws(()=>caminhoExecutavelAtualizacao(''),/Pasta do aplicativo indispon
 assert.match(comandoAplicadorAtualizacao('C:\\Apps\\CELC Financeiro\\aplicar-atualizacao.ps1'),/cmd\.exe \/d \/c start "" \/min powershell\.exe/);
 assert.match(comandoAplicadorAtualizacao('C:\\Apps\\CELC Financeiro\\aplicar-atualizacao.ps1'),/-File "C:\\Apps\\CELC Financeiro\\aplicar-atualizacao\.ps1"/);
 assert.throws(()=>comandoAplicadorAtualizacao(''),/Script do aplicador indisponível/);
-console.log('16 asserções aprovadas — comparação, consulta nativa, caminho do executável e aplicador desacoplado.');
+assert.equal(await sha256Pacote(new TextEncoder().encode('abc')),'ba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad');
+assert.equal(validarHashPacote('A'.repeat(64),'a'.repeat(64)),true);
+assert.throws(()=>validarHashPacote('B'.repeat(64),'a'.repeat(64)),/não confere/);
+assert.throws(()=>validarHashPacote('invalido','a'.repeat(64)),/não informa/);
+console.log('20 asserções aprovadas — comparação, consulta nativa, SHA-256 do pacote, caminho do executável e aplicador desacoplado.');

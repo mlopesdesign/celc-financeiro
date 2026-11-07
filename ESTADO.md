@@ -1,7 +1,23 @@
 # Estado do projeto — CELC Financeiro
 
-**Versão atual:** `0.2.27`
-**Estado de validação:** categorias excluídas permanecem excluídas após reabrir; relatórios abrangem período mensal, anual, personalizado e todas as categorias cadastradas; fechamento e atualização exigem backup silencioso concluído; exclusão de despesa remove também pagamentos vinculados.
+**Versão atual:** `0.2.29`
+**Estado de validação:** release v0.2.28 publicada e hashes locais conferem com o GitHub; suíte, sintaxe, UTF-8 e Graphify aprovados. A preservação do banco durante atualização online em instalação com dados reais continua `INCONCLUSIVA` nesta auditoria porque não havia banco local autorizado para clonar.
+
+## Hash obrigatório no atualizador — 0.2.29 (2026-11-06)
+
+- O manifesto passou a publicar `resourcesSha256` para o `resources.neu`.
+- O aplicativo calcula o SHA-256 do download antes de criar o script de troca; divergência ou hash ausente aborta a atualização e mantém a versão atual.
+- A senha inicial não foi alterada, conforme decisão do responsável: há somente uma pessoa com acesso.
+- `tests/atualizador.mjs` cobre SHA-256 real, correspondência, divergência e manifesto inválido; a suíte completa passou com 20 asserções no atualizador.
+- Build Neutralino, Setup NSIS e `/S /VALIDATE` passaram; a pasta temporária de validação ficou sem arquivos.
+- Release local preparada em `Release/v0.2.29/`; publicação GitHub será registrada após commit, tag e upload.
+
+## Auditoria de skills — 2026-11-06
+
+- Relatórios completos em `audit-output/`: integridade, segurança, threat model, ownership e resumo consolidado.
+- Fixture SQLite clonada byte a byte, com `integrity_check`, `foreign_key_check`, contagens, hashes e totais preservados.
+- Release v0.2.28 conferida localmente e no GitHub: tag, manifesto, `resources.neu`, Setup e SHA-256 coerentes.
+- Falhas de aprovação: não houve ciclo online real com dados; o atualizador não verifica hash/assinatura do `resources.neu`; a credencial inicial `admin/admin123` permanece previsível.
 **Aplicação:** desktop Windows para a gestão financeira do Colégio CELC.  
 **Stack:** JavaScript ESM, HTML/CSS puro, sql.js (SQLite local), Neutralino.js 6.3.0 e instalador NSIS.
 

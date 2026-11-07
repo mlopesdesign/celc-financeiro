@@ -4,7 +4,7 @@ import {criarApiFinanceira as criarApi} from './backend/servidor.js';
 import {valorRealizado,saldoDoLancamento,pagamentosDaDespesa} from './backend/core/pagamentos.js';
 import {verificarAtualizacao,instalarAtualizacao} from './backend/atualizador.js';
 
-const APP_VERSION='0.2.28';
+const APP_VERSION='0.2.29';
 const hoje=new Date().toISOString().slice(0,10);
 const $=seletor=>document.querySelector(seletor);
 const $$=seletor=>Array.from(document.querySelectorAll(seletor));

@@ -2,6 +2,24 @@ import { compararVersoes } from './core/atualizador.js';
 import { criarBackup } from './core/backup.js';
 
 const MANIFESTO_GITHUB='https://github.com/mlopesdesign/celc-financeiro/releases/latest/download/latest.json';
+const SHA256=/^[a-f0-9]{64}$/i;
+
+function bytesDoPacote(dados){
+  if(dados instanceof Uint8Array)return dados;
+  if(dados instanceof ArrayBuffer)return new Uint8Array(dados);
+  throw Error('O pacote baixado possui formato inválido.');
+}
+
+export async function sha256Pacote(dados){
+  const digest=await globalThis.crypto.subtle.digest('SHA-256',bytesDoPacote(dados));
+  return Array.from(new Uint8Array(digest),byte=>byte.toString(16).padStart(2,'0')).join('');
+}
+
+export function validarHashPacote(hashEsperado,hashObtido){
+  if(!SHA256.test(String(hashEsperado||'')))throw Error('O manifesto não informa um SHA-256 válido para a atualização.');
+  if(String(hashEsperado).toLowerCase()!==String(hashObtido||'').toLowerCase())throw Error('O SHA-256 do pacote baixado não confere com o manifesto.');
+  return true;
+}
 
 export function caminhoExecutavelAtualizacao(pastaAplicativo=globalThis.window?.NL_PATH){
   if(!pastaAplicativo)throw Error('Pasta do aplicativo indisponível.');
@@ -15,7 +33,7 @@ export function comandoAplicadorAtualizacao(caminhoScript){
 }
 
 function validarManifesto(atualizacao){
-  if(atualizacao?.applicationId!=='com.mllopesdesign.celcfinanceiro'||!atualizacao?.version||!atualizacao?.resourcesURL||!/^https:\/\/github\.com\/mlopesdesign\/celc-financeiro\/releases\/download\/v[^/]+\/resources\.neu$/i.test(atualizacao.resourcesURL))throw Error('Manifesto incompatível.');
+  if(atualizacao?.applicationId!=='com.mllopesdesign.celcfinanceiro'||!atualizacao?.version||!atualizacao?.resourcesURL||!SHA256.test(String(atualizacao.resourcesSha256||''))||!/^https:\/\/github\.com\/mlopesdesign\/celc-financeiro\/releases\/download\/v[^/]+\/resources\.neu$/i.test(atualizacao.resourcesURL))throw Error('Manifesto incompatível.');
   return atualizacao;
 }
 
@@ -37,6 +55,7 @@ export async function instalarAtualizacao(Neutralino,banco,versaoAtual){
     const basePath=pastaAplicativo.replace(/[\\/]$/,''),destino=`${basePath}\\resources.neu`,temporario=`${destino}.new`,seguro=valor=>String(valor).replaceAll('"','""'),comando=`curl.exe -L --fail --silent --show-error --output "${seguro(temporario)}" "${consulta.atualizacao.resourcesURL}"`,resultado=await Neutralino.os.execCommand(comando);
     if(Number(resultado.exitCode??0)!==0)throw Error(resultado.stdErr||'Falha ao baixar atualização.');
     const pacote=await Neutralino.filesystem.readBinaryFile(temporario);if(!(pacote instanceof ArrayBuffer||pacote instanceof Uint8Array)||pacote.byteLength<1024)throw Error('O pacote baixado está vazio ou incompleto.');
+    validarHashPacote(consulta.atualizacao.resourcesSha256,await sha256Pacote(pacote));
     const executavel=caminhoExecutavelAtualizacao(basePath),scriptPath=`${basePath}\\aplicar-atualizacao.ps1`,backupPacote=`${destino}.bak`,ps=valor=>String(valor).replaceAll("'","''"),script=[
       "$ErrorActionPreference = 'Stop'",
       `$destino = '${ps(destino)}'`,
