@@ -22,6 +22,8 @@
 - O resumo do Caixa diário passa a retornar `dinheiroReceitas`, `dinheiroDespesas` e `dinheiroEmMaos`, mantendo também o saldo total de todas as formas para conferência.
 - O teste `tests/caixa-formas.mjs` comprova que entradas e saídas eletrônicas não aumentam o dinheiro em mãos; suíte completa, sintaxe, UTF-8 e Graphify aprovados.
 - O modo `/VALIDATE` do Setup foi corrigido para extrair em pasta temporária e removê-la ao final; a validação silenciosa `/S /VALIDATE` foi aprovada sem modificar a instalação nem o banco.
+- Commit: `e0fa744`; tag: `v0.2.28`; release: https://github.com/mlopesdesign/celc-financeiro/releases/tag/v0.2.28.
+- SHA-256 publicado: `resources.neu` `310552273894D1F3ADD45B5C0F793069F03EC39C6234BA62BFF87F2E53E261CB`; Setup `0EA8CB53F4406B373F8B8241C6D5DC8FB121C7FDD62B1ECB64A9123F6CAEA4B2`.
 
 ## Janela 1280 x 960 - 0.2.26 (2026-10-30)
 
