@@ -15,6 +15,14 @@
 - SHA-256 publicado: `resources.neu` `082115B9F314A1A7EE19CE6E3C96423A80AC3BC19200B2834C9D8B3038C96856`; Setup `D0DC1538E84502DD75CF40613FAC6476F8751196EFE7D3C376B610186318E368`.
 - A atualização online substitui somente `resources.neu`; o banco externo do cliente não é apagado nem substituído.
 
+## Saldo realizado e dinheiro em mãos — 0.2.28 (2026-11-06)
+
+- O diagnóstico mostrou que `saldoDisponivel` somava todas as entradas e saídas realizadas, sem distinguir dinheiro, Pix, cartão, boleto e transferência; isso não representa dinheiro físico disponível.
+- O dashboard agora exibe **Dinheiro em mãos**, calculado somente pelos registros do `caixa_diario` cuja forma de pagamento é `Dinheiro`; o saldo realizado geral continua preservado no texto de apoio.
+- O resumo do Caixa diário passa a retornar `dinheiroReceitas`, `dinheiroDespesas` e `dinheiroEmMaos`, mantendo também o saldo total de todas as formas para conferência.
+- O teste `tests/caixa-formas.mjs` comprova que entradas e saídas eletrônicas não aumentam o dinheiro em mãos; suíte completa, sintaxe, UTF-8 e Graphify aprovados.
+- O modo `/VALIDATE` do Setup foi corrigido para extrair em pasta temporária e removê-la ao final; a validação silenciosa `/S /VALIDATE` foi aprovada sem modificar a instalação nem o banco.
+
 ## Janela 1280 x 960 - 0.2.26 (2026-10-30)
 
 - Pedido do Marcio: janela normal (restaurada) passa de 800 x 600 para 1280 x 960 (aresta longa 1280, proporção 4:3), centralizada. Mínimo continua 800 x 600; maximizada = monitor inteiro; `useSavedState: false` mantido.

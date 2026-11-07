@@ -4,22 +4,22 @@ SetCompressor /SOLID zlib
 ManifestDPIAware true
 
 !define APP_NAME "CELC Financeiro"
-!define APP_VERSION "0.2.27"
+!define APP_VERSION "0.2.28"
 !define APP_PUBLISHER "ML Lopes Design"
 !define APP_EXE "CELC Financeiro.exe"
 !define APP_REGKEY "Software\\ML Lopes Design\\CELC Financeiro"
 !define UNINSTALL_KEY "Software\\Microsoft\\Windows\\CurrentVersion\\Uninstall\\CELC Financeiro"
 
 Name "${APP_NAME} ${APP_VERSION}"
-OutFile "..\\Release\\CELC-Financeiro-Setup-0.2.27.exe"
-VIProductVersion "0.2.27.0"
+OutFile "..\\Release\\CELC-Financeiro-Setup-0.2.28.exe"
+VIProductVersion "0.2.28.0"
 VIAddVersionKey "ProductName" "CELC Financeiro"
-VIAddVersionKey "ProductVersion" "0.2.27"
+VIAddVersionKey "ProductVersion" "0.2.28"
 VIAddVersionKey "CompanyName" "ML Lopes Design"
 VIAddVersionKey "LegalCopyright" "© 2026 ML Lopes Design"
 VIAddVersionKey "FileDescription" "Instalador do CELC Financeiro"
-VIAddVersionKey "FileVersion" "0.2.27"
-VIAddVersionKey "OriginalFilename" "CELC-Financeiro-Setup-0.2.27.exe"
+VIAddVersionKey "FileVersion" "0.2.28"
+VIAddVersionKey "OriginalFilename" "CELC-Financeiro-Setup-0.2.28.exe"
 Icon "..\assets\celc-app-icon.ico"
 UninstallIcon "..\assets\celc-app-icon.ico"
 InstallDir "$LOCALAPPDATA\\Programs\\CELC Financeiro"
@@ -60,12 +60,16 @@ Function .onInit
 FunctionEnd
 
 Section "CELC Financeiro" SEC_APP
+  ${If} $ValidacaoIsolada == "1"
+    StrCpy $INSTDIR "$TEMP\CELC-Financeiro-Validate-${APP_VERSION}"
+  ${EndIf}
   SetOutPath "$INSTDIR"
   File /oname=CELC_Financeiro.exe "..\\dist\\CELC Financeiro\\CELC Financeiro-win_x64.exe"
   Rename "$INSTDIR\\CELC_Financeiro.exe" "$INSTDIR\\${APP_EXE}"
   File "..\\dist\\CELC Financeiro\\resources.neu"
   File /oname=celc-app-icon.ico "..\\assets\\celc-app-icon.ico"
   ${If} $ValidacaoIsolada == "1"
+    RMDir /r "$INSTDIR"
     Goto fim_instalacao
   ${EndIf}
   InitPluginsDir

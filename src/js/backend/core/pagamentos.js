@@ -10,6 +10,11 @@ export function valorRealizado(db,item){
   return pagamentos.length?pagamentos.reduce((s,x)=>s+x.valorCentavos,0):item.situacao==='pago'?item.valorCentavos:0;
 }
 
+const formaDinheiro=item=>String(item?.formaPagamento||'').trim().toLocaleLowerCase('pt-BR')==='dinheiro';
+export function saldoDinheiroEmMaos(db){
+  return (db.listarCaixaDiario?.()||[]).filter(formaDinheiro).reduce((saldo,item)=>saldo+(item.tipo==='entrada'?1:-1)*Number(item.valorCentavos||0),0);
+}
+
 export const saldoDoLancamento=(db,item)=>Math.max(0,item.valorCentavos-valorRealizado(db,item));
 
 export function fluxoRealizado(db){

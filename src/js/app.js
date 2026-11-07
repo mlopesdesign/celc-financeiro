@@ -4,7 +4,7 @@ import {criarApiFinanceira as criarApi} from './backend/servidor.js';
 import {valorRealizado,saldoDoLancamento,pagamentosDaDespesa} from './backend/core/pagamentos.js';
 import {verificarAtualizacao,instalarAtualizacao} from './backend/atualizador.js';
 
-const APP_VERSION='0.2.27';
+const APP_VERSION='0.2.28';
 const hoje=new Date().toISOString().slice(0,10);
 const $=seletor=>document.querySelector(seletor);
 const $$=seletor=>Array.from(document.querySelectorAll(seletor));
@@ -14,7 +14,7 @@ const liquidado=item=>item.tipo==='entrada'?item.situacao==='recebido':item.situ
 
 let banco;
 let api;
-let tela='dashboard';
+let tela='dashboard',ultimoResumoDashboard=null;
 let edicao=null;
 let categoriaEmEdicao=null;
 let relatorioAba='geral';
@@ -67,6 +67,7 @@ function tabela(itens,{acao=true}={}){
 
 async function dashboard(){
   const resumo=await api('painel:resumo',{referencia:`${mesDashboard}-01`});
+  ultimoResumoDashboard=resumo;
   const pendentes=resumo.recentes.filter(item=>!liquidado(item));
   const porCategoria=resumo.doMes.filter(item=>item.tipo==='despesa').reduce((total,item)=>{
     total[item.categoria]=(total[item.categoria]||0)+valorRealizado(banco,item);
@@ -189,6 +190,7 @@ async function render(){
   $('#subtitulo').textContent=meta.subtitulo;
   try{
     $('#conteudo').innerHTML=await meta.montar();
+    if(tela==='dashboard'&&ultimoResumoDashboard){const card=$('#conteudo .summary-card'),titulo=card?.querySelector('p'),valor=card?.querySelector('h2'),nota=card?.querySelector('span');if(titulo)titulo.textContent='Dinheiro em mãos';if(valor)valor.textContent=brl(ultimoResumoDashboard.dinheiroEmMaos);if(nota)nota.textContent=`Somente pagamentos em Dinheiro · Saldo realizado geral: ${brl(ultimoResumoDashboard.saldoDisponivel)}`;}
   }catch(erro){
     console.error(erro);
     $('#conteudo').innerHTML=`<section class="panel"><h3>Falha ao abrir esta página</h3><p class="subtitle">${esc(erro.message||erro)}</p></section>`;

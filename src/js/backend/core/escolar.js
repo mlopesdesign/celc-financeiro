@@ -22,8 +22,8 @@ export function listarCaixaDiario(db,{data=''}={}){
 
 export function resumirCaixaDiario(db,{data=''}={}){
   const itens=listarCaixaDiario(db,{data});
-  const receitas=itens.filter(x=>(x.tipo||'entrada')==='entrada').reduce((s,x)=>s+x.valorCentavos,0),despesas=itens.filter(x=>x.tipo==='despesa').reduce((s,x)=>s+x.valorCentavos,0),porOrigem=itens.reduce((a,x)=>{const chave=`${x.tipo||'entrada'}:${x.origem}`;a[chave]=(a[chave]||0)+x.valorCentavos;return a;},{});
-  return {itens,receitas,despesas,saldo:receitas-despesas,porOrigem,quantidade:itens.length};
+  const receitas=itens.filter(x=>(x.tipo||'entrada')==='entrada').reduce((s,x)=>s+x.valorCentavos,0),despesas=itens.filter(x=>x.tipo==='despesa').reduce((s,x)=>s+x.valorCentavos,0),dinheiro=itens.filter(x=>String(x.formaPagamento||'').trim().toLocaleLowerCase('pt-BR')==='dinheiro'),dinheiroReceitas=dinheiro.filter(x=>(x.tipo||'entrada')==='entrada').reduce((s,x)=>s+x.valorCentavos,0),dinheiroDespesas=dinheiro.filter(x=>x.tipo==='despesa').reduce((s,x)=>s+x.valorCentavos,0),porOrigem=itens.reduce((a,x)=>{const chave=`${x.tipo||'entrada'}:${x.origem}`;a[chave]=(a[chave]||0)+x.valorCentavos;return a;},{});
+  return {itens,receitas,despesas,saldo:receitas-despesas,dinheiroReceitas,dinheiroDespesas,dinheiroEmMaos:dinheiroReceitas-dinheiroDespesas,porOrigem,quantidade:itens.length};
 }
 
 export async function pagarDespesaNoCaixa(db,dados,u={id:'direcao-celc'}){

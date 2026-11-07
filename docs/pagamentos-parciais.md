@@ -7,7 +7,7 @@ O valor integral pertence a um único lançamento. Cada pagamento efetivo é uma
 - Despesas antigas pagas sem detalhamento de caixa continuam tendo seu valor original reconhecido como realizado.
 - O relatório por competência usa o mês da despesa; o fluxo de caixa usa a data real de cada pagamento.
 - Salvar a despesa e suas partes usa uma transação SQLite. As chamadas da API são serializadas.
-- Um pagamento maior que o saldo é recusado. Exclusão de despesa com pagamentos é bloqueada.
+- Um pagamento maior que o saldo é recusado. A exclusão confirmada da despesa remove, na mesma transação, os pagamentos vinculados e a auditoria da exclusão.
 - O estorno de uma parte conserva as demais e recalcula o saldo.
 - Nenhum registro do cliente é migrado ou reclassificado por esta alteração.
 
