@@ -10,7 +10,10 @@
 - A senha inicial não foi alterada, conforme decisão do responsável: há somente uma pessoa com acesso.
 - `tests/atualizador.mjs` cobre SHA-256 real, correspondência, divergência e manifesto inválido; a suíte completa passou com 20 asserções no atualizador.
 - Build Neutralino, Setup NSIS e `/S /VALIDATE` passaram; a pasta temporária de validação ficou sem arquivos.
-- Release local preparada em `Release/v0.2.29/`; publicação GitHub será registrada após commit, tag e upload.
+- Commit `9aa9555`, tag `v0.2.29` e GitHub Release publicados: https://github.com/mlopesdesign/celc-financeiro/releases/tag/v0.2.29.
+- SHA-256 publicado: `resources.neu` `4986DAA41590A461059B44795EDC8A5B93CD2C4CB038A914067D651D6264D954`; Setup `D5959406FF9F35F718834B305FD291F2ED255296FDED73A99F12FEF4C4333695`.
+- Verificação online somente leitura: `latest.json` e `resources.neu` baixados pelo GitHub; o hash baixado conferiu com `resourcesSha256`.
+- O ciclo completo em instalação com banco real continua pendente; nenhuma máquina ou banco de cliente foi alterado.
 
 ## Auditoria de skills — 2026-11-06
 
