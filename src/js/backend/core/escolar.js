@@ -55,7 +55,7 @@ export async function excluirCaixaDiario(db,id,u={id:'direcao-celc'}){
   }
   if((item.tipo||'entrada')==='entrada'){await estornarDevedorDoCaixa(db,item,lancamento);if(lancamento&&lancamento.tipo==='entrada'&&!db.listarCaixaDiario().some(x=>x.lancamentoId===lancamento.id&&x.id!==caixaId))await db.executar('DELETE FROM lancamentos WHERE id=?',[lancamento.id]);}
   await db.executar('DELETE FROM caixa_diario WHERE id=?',[caixaId]);
-  await db.executar('INSERT INTO auditoria (usuario_id,acao,entidade,entidade_id,criado_em,detalhes) VALUES (?,?,?,?,?,?)',[u.id,'excluir','caixa_diario',caixaId,item.origem||'']);
+  await db.executar('INSERT INTO auditoria (usuario_id,acao,entidade,entidade_id,criado_em,detalhes) VALUES (?,?,?,?,?,?)',[u.id,'excluir','caixa_diario',caixaId,t,item.origem||'']);
   return {ok:true};
 }
 

@@ -78,6 +78,9 @@ await fixture(async({abrir})=>{
   assert.equal((await api('caixa:excluir',{id:r.caixaId})).ok,true);
   assert.equal(devedores().find(x=>x.id===dev).situacao,'em_aberto');n++;
 
+  // Auditoria da exclusão do caixa grava data válida (antes gravava o nome da origem no campo da data).
+  const aud=banco.linhas("SELECT criado_em FROM auditoria WHERE entidade='caixa_diario' AND acao='excluir'");
+  assert.ok(aud.length>0&&aud.every(x=>/^\d{4}-\d{2}-\d{2}T/.test(x.criado_em)));n++;
   // Excluir no caixa uma receita do fechamento remove o lançamento.
   r=await api('caixa:registrar',{data:HOJE,receitasCentavos:30000,formaPagamento:'Dinheiro'});
   const linha=caixa().find(x=>x.tipo==='entrada'&&x.valorCentavos===30000);
@@ -120,6 +123,8 @@ assert.equal((app.match(/Math\.round\(Number\(/g)||[]).length,1,'todo valor digi
 assert.equal(/type="number"/.test(app),false,'campos de dinheiro não usam type=number');n++;
 // UI-02: o app recalcula o dia a cada tela.
 assert.ok(app.includes('let hoje=hojeLocal();')&&app.includes('hoje=hojeLocal();'));n++;
+// Exclusão: confirmação explícita e botão Excluir também nas receitas do caixa.
+assert.ok(app.includes('function confirmarExclusao')&&!app.includes("botao.textContent='Confirmar'")&&!app.includes(":'—'}</td></tr>`).join('')||'<tr><td colspan=\"6\""));n++;
 // UI-06: guarda contra clique duplo em formulários.
 assert.ok(app.includes("document.addEventListener('submit'")&&app.includes('envios.has(form)'));n++;
 // UI-07: autopreenchimento não sobrescreve valor nem recorrência.

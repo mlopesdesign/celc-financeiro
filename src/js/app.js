@@ -6,8 +6,9 @@ import {favorecidoDaDespesa} from './backend/core/dashboard.js';
 import {verificarAtualizacao,instalarAtualizacao} from './backend/atualizador.js';
 import {hojeLocal} from './backend/core/datas.js';
 
-const APP_VERSION='0.2.34';
+const APP_VERSION='0.2.35';
 let hoje=hojeLocal();
+let dataCaixa='';
 function centavosDe(texto){let s=String(texto??'').replace(/R\$|\s/g,'');if(s==='')return NaN;if(!/^\d{1,3}(\.\d{3})+(,\d{1,2})?$|^\d+(,\d{1,2})?$|^\d+\.\d{1,2}$/.test(s))return NaN;s=s.includes(',')?s.replace(/\./g,'').replace(',','.'):/^\d{1,3}(\.\d{3})+$/.test(s)?s.replace(/\./g,''):s;return Math.round(Number(s)*100);}
 const envios=new WeakSet();
 document.addEventListener('submit',evento=>{const form=evento.target;if(!(form instanceof HTMLFormElement)||form.id==='formLogin')return;if(envios.has(form)){evento.preventDefault();evento.stopImmediatePropagation();return;}envios.add(form);form.querySelectorAll('button').forEach(b=>b.disabled=true);setTimeout(()=>{envios.delete(form);form.querySelectorAll('button').forEach(b=>b.disabled=false);},1500);},true);
@@ -41,6 +42,16 @@ const telas={
   configuracoes:{rotulo:'ADMINISTRAÇÃO',titulo:'Configurações',subtitulo:'Segurança, backup e atualização do sistema.',montar:configuracoes}
 };
 
+function confirmarExclusao(titulo,detalhe){
+  return new Promise(resolver=>{
+    const dialogo=document.createElement('dialog');dialogo.className='modal';
+    dialogo.innerHTML=`<h2>${esc(titulo)}</h2><p>${esc(detalhe)}</p><p class="subtitle">A exclusão não pode ser desfeita.</p><div class="row-actions"><button type="button" class="outline-button">Cancelar</button><button type="button" class="primary-action">Excluir</button></div>`;
+    const [cancelar,excluir]=dialogo.querySelectorAll('button');let resposta=false;
+    cancelar.onclick=()=>dialogo.close();excluir.onclick=()=>{resposta=true;dialogo.close();};
+    dialogo.addEventListener('close',()=>{dialogo.remove();resolver(resposta);},{once:true});
+    document.body.append(dialogo);dialogo.showModal();excluir.focus();
+  });
+}
 function aviso(texto,erro=false){
   document.querySelectorAll('.toast-celc').forEach(item=>item.remove());
   const toast=document.createElement('div');
@@ -147,12 +158,12 @@ async function lista(tipo,situacoes){
 }
 
 function tabelaCaixa(itens){
-  return `<div class="table-wrap"><table><thead><tr><th>DATA</th><th>TIPO</th><th>DETALHE</th><th>RECEITAS</th><th>DESPESAS</th><th>AÇÕES</th></tr></thead><tbody>${itens.map(x=>`<tr><td>${dataPt(x.data)}</td><td><span class="type-badge ${x.tipo||'entrada'}">${(x.tipo||'entrada')==='entrada'?'receita':'despesa'}</span></td><td><div class="title-stack"><b>${esc(x.origem||'Fechamento diário')}</b><small>${esc(x.formaPagamento||'Dinheiro')} · Ref. ${dataPt(x.competencia||x.data)}${x.observacao?` · ${esc(x.observacao)}`:''}</small></div></td><td class="amount in">${(x.tipo||'entrada')==='entrada'?brl(x.valorCentavos):'-'}</td><td class="amount out">${x.tipo==='despesa'?brl(x.valorCentavos):'-'}</td><td>${x.tipo==='despesa'?`<button class="text-button danger" data-excluir-caixa="${esc(x.id)}">Excluir</button>`:'—'}</td></tr>`).join('')||'<tr><td colspan="6" class="empty">Nenhum fechamento registrado neste caixa.</td></tr>'}</tbody></table></div>`;
+  return `<div class="table-wrap"><table><thead><tr><th>DATA</th><th>TIPO</th><th>DETALHE</th><th>RECEITAS</th><th>DESPESAS</th><th>AÇÕES</th></tr></thead><tbody>${itens.map(x=>`<tr><td>${dataPt(x.data)}</td><td><span class="type-badge ${esc(x.tipo||'entrada')}">${(x.tipo||'entrada')==='entrada'?'receita':'despesa'}</span></td><td><div class="title-stack"><b>${esc(x.origem||'Fechamento diário')}</b><small>${esc(x.formaPagamento||'Dinheiro')} · Ref. ${dataPt(x.competencia||x.data)}${x.observacao?` · ${esc(x.observacao)}`:''}</small></div></td><td class="amount in">${(x.tipo||'entrada')==='entrada'?brl(x.valorCentavos):'-'}</td><td class="amount out">${x.tipo==='despesa'?brl(x.valorCentavos):'-'}</td><td><button class="text-button danger" data-excluir-caixa="${esc(x.id)}">Excluir</button></td></tr>`).join('')||'<tr><td colspan="6" class="empty">Nenhum fechamento registrado neste caixa.</td></tr>'}</tbody></table></div>`;
 }
 
 async function caixaDiario(){
-  const resumo=await api('caixa:resumo',{data:hoje});
-  return `<section class="content-grid"><article class="panel"><h3>Fechamento do caixa diário</h3><p class="subtitle">Registre receitas e apenas despesas sem detalhamento. Use o detalhamento para localizar pagamentos já cadastrados ou incluir uma despesa pontual.</p><form id="formCaixa" class="stack wide-form"><div class="two-columns"><label>Data<input name="data" type="date" value="${hoje}" required></label><label>Receitas recebidas (R$)<input name="receita" type="text" inputmode="decimal" autocomplete="off" placeholder="0,00"></label></div><label>Despesas sem detalhamento (R$)<input name="despesa" type="text" inputmode="decimal" autocomplete="off" placeholder="0,00"></label><button class="outline-button" id="abrirDetalhamento" type="button">Detalhar despesas</button><button class="primary-action">Salvar fechamento diário</button></form></article><article class="panel"><h3>Resumo do dia</h3><div class="metric-strip school-metrics"><span>Receitas <b>${brl(resumo.receitas)}</b></span><span>Pagamentos <b>${brl(resumo.despesas)}</b></span><span>Saldo do dia <b>${brl(resumo.saldo)}</b></span></div><p class="subtitle">${resumo.quantidade} registro(s) financeiro(s) no fechamento de ${dataPt(hoje)}.</p></article></section><section class="panel"><div class="panel-heading"><div><h3>Movimentação do caixa</h3><p>${dataPt(hoje)}</p></div></div>${tabelaCaixa(resumo.itens)}</section>`;
+  const resumo=await api('caixa:resumo',{data:dataCaixa||hoje});
+  return `<section class="content-grid"><article class="panel"><h3>Fechamento do caixa diário</h3><p class="subtitle">Registre receitas e apenas despesas sem detalhamento. Use o detalhamento para localizar pagamentos já cadastrados ou incluir uma despesa pontual.</p><form id="formCaixa" class="stack wide-form"><div class="two-columns"><label>Data<input name="data" type="date" max="${hoje}" value="${dataCaixa||hoje}" required></label><label>Receitas recebidas (R$)<input name="receita" type="text" inputmode="decimal" autocomplete="off" placeholder="0,00"></label></div><label>Despesas sem detalhamento (R$)<input name="despesa" type="text" inputmode="decimal" autocomplete="off" placeholder="0,00"></label><button class="outline-button" id="abrirDetalhamento" type="button">Detalhar despesas</button><button class="primary-action">Salvar fechamento diário</button></form></article><article class="panel"><h3>Resumo do dia</h3><div class="metric-strip school-metrics"><span>Receitas <b>${brl(resumo.receitas)}</b></span><span>Pagamentos <b>${brl(resumo.despesas)}</b></span><span>Saldo do dia <b>${brl(resumo.saldo)}</b></span></div><p class="subtitle">${resumo.quantidade} registro(s) financeiro(s) no fechamento de ${dataPt(dataCaixa||hoje)}.</p></article></section><section class="panel"><div class="panel-heading"><div><h3>Movimentação do caixa</h3><p>${dataPt(dataCaixa||hoje)}</p></div></div>${tabelaCaixa(resumo.itens)}</section>`;
 }
 
 async function abrirDetalhamentoCaixa(){
@@ -309,8 +320,10 @@ function prepararPagamentos(form,item){
   form.liquidacao.innerHTML=form.tipo.value==='despesa'?'<option value="aberto">Sem pagamento agora</option><option value="realizado">Pagamento integral</option><option value="parcial">Pagamentos parciais</option>':'<option value="aberto">Ainda não recebido</option><option value="realizado">Recebido</option>';
   if(form.tipo.value!=='despesa'){
     form.liquidacao.value=item&&liquidado(item)?'realizado':'aberto';
-    form.liquidacao.closest('label').insertAdjacentHTML('afterend',`<label id="campoDataLiquidacao">Data do recebimento<input name="dataLiquidacao" type="date" max="${hoje}" value="${esc(item?.liquidadoEm?.slice(0,10)||hoje)}"></label>`);
+    form.liquidacao.closest('label').insertAdjacentHTML('afterend',`<label id="campoDataLiquidacao">Data do recebimento<input name="dataLiquidacao" type="date" max="${hoje}" value="${esc(item?.liquidadoEm?.slice(0,10)||(form.competencia.value&&form.competencia.value<hoje?form.competencia.value:hoje))}"></label>`);
     const campo=$('#campoDataLiquidacao');campo.hidden=form.liquidacao.value!=='realizado';
+    const dataRec=form.dataLiquidacao;dataRec.oninput=()=>{dataRec.dataset.manual='1';};
+    if(!item)form.competencia.onchange=()=>{if(form.dataLiquidacao&&form.dataLiquidacao.dataset.manual!=='1')form.dataLiquidacao.value=form.competencia.value&&form.competencia.value<hoje?form.competencia.value:hoje;};
     form.liquidacao.onchange=()=>{campo.hidden=form.liquidacao.value!=='realizado';};
     return;
   }
@@ -404,12 +417,9 @@ function ligarEventos(){
     if(item)abrirModal(item);
   });
   $$('[data-excluir]').forEach(botao=>botao.onclick=async()=>{
-    if(botao.dataset.confirma!=='1'){
-      botao.dataset.confirma='1';
-      botao.textContent='Confirmar';
-      setTimeout(()=>{if(botao.isConnected&&botao.dataset.confirma==='1'){botao.dataset.confirma='0';botao.textContent='Excluir';}},3500);
-      return;
-    }
+    const item=banco.listarLancamentos().find(x=>x.id===botao.dataset.excluir);
+    const pagos=item?banco.listarCaixaDiario().filter(x=>x.lancamentoId===item.id).length:0;
+    if(!await confirmarExclusao('Excluir lançamento?',item?`${item.descricao} — ${brl(item.valorCentavos)} (${dataPt(item.competencia)})${pagos?` e ${pagos} registro(s) vinculado(s) no caixa`:''}.`:'Lançamento selecionado.'))return;
     const resposta=await api('lancamentos:excluir',{id:botao.dataset.excluir});
     aviso(resposta.ok?'Lançamento excluído.':resposta.erro,!resposta.ok);
     render();
@@ -454,20 +464,19 @@ function ligarEventos(){
     if(resposta.ok){categoriaEmEdicao=null;render();}
   });
   $$('[data-cancelar-edicao]').forEach(botao=>botao.onclick=()=>{categoriaEmEdicao=null;render();});
+  $('#formCaixa')&&($('#formCaixa').data.onchange=evento=>{if(evento.target.value){dataCaixa=evento.target.value;render();}});
   $('#formCaixa')&&($('#formCaixa').onsubmit=async evento=>{
     evento.preventDefault();
     const dados=Object.fromEntries(new FormData(evento.currentTarget));
+    dataCaixa=dados.data||dataCaixa;
     const resposta=await api('caixa:registrar',{...dados,formaPagamento:'Não informado',receitasCentavos:centavosDe(dados.receita||0),despesasCentavos:centavosDe(dados.despesa||0)});
     aviso(resposta.ok?'Fechamento diário registrado.':resposta.erro,!resposta.ok);
     if(resposta.ok)render();
   });
   $('#abrirDetalhamento')&&($('#abrirDetalhamento').onclick=abrirDetalhamentoCaixa);
   $$('[data-excluir-caixa]').forEach(botao=>botao.onclick=async()=>{
-    if(botao.dataset.confirma!=='1'){
-      botao.dataset.confirma='1';botao.textContent='Confirmar exclusão';
-      setTimeout(()=>{if(botao.isConnected&&botao.dataset.confirma==='1'){botao.dataset.confirma='0';botao.textContent='Excluir';}},3500);
-      return;
-    }
+    const item=banco.listarCaixaDiario().find(x=>x.id===botao.dataset.excluirCaixa);
+    if(!await confirmarExclusao('Excluir movimentação do caixa?',item?`${item.tipo==='despesa'?'Despesa':'Receita'} ${item.origem||''} — ${brl(item.valorCentavos)} (${dataPt(item.data)}). O lançamento vinculado também será ajustado.`:'Movimentação selecionada.'))return;
     const resposta=await api('caixa:excluir',{id:botao.dataset.excluirCaixa});
     aviso(resposta.ok?'Movimentação excluída e saldo ajustado.':resposta.erro,!resposta.ok);
     if(resposta.ok)render();
