@@ -1,5 +1,5 @@
 import assert from 'node:assert/strict';
-import {mkdtemp,readFile,rename,rm,writeFile,mkdir} from 'node:fs/promises';
+import {mkdtemp,readFile,rename,rm,writeFile,mkdir,stat,readdir} from 'node:fs/promises';
 import {tmpdir} from 'node:os';
 import path from 'node:path';
 import vm from 'node:vm';
@@ -12,7 +12,7 @@ import {historicoMensalCategoria} from '../src/js/backend/core/pagamentos.js';
 const raiz=path.resolve(import.meta.dirname,'..'),arquivoSql=path.join(raiz,'src/js/vendor/sql-wasm.js'),modulo={exports:{}};
 vm.runInNewContext(await readFile(arquivoSql,'utf8'),{module:modulo,exports:modulo.exports,require:createRequire(import.meta.url),__dirname:path.dirname(arquivoSql),__filename:arquivoSql,console,process,Buffer,URL,TextDecoder,TextEncoder,WebAssembly,setTimeout,clearTimeout});
 const SQL=await modulo.exports({locateFile:a=>path.join(raiz,'src/js/vendor',a)}),pasta=await mkdtemp(path.join(tmpdir(),'celc-pagamentos-')),normalizar=p=>p.replaceAll('\\',path.sep);
-const Neutralino={os:{getEnv:async()=>pasta},filesystem:{createDirectory:p=>mkdir(normalizar(p),{recursive:true}),readBinaryFile:async p=>{const b=await readFile(normalizar(p));return b.buffer.slice(b.byteOffset,b.byteOffset+b.byteLength);},writeBinaryFile:(p,b)=>writeFile(normalizar(p),Buffer.from(b)),move:(a,b)=>rename(normalizar(a),normalizar(b)),remove:p=>rm(normalizar(p),{force:true})}};
+const Neutralino={os:{getEnv:async()=>pasta},filesystem:{getStats:async p=>{try{return await stat(normalizar(p));}catch(e){if(e.code==='ENOENT')e.code='NE_FS_NOPATHE';throw e;}},readDirectory:async p=>(await readdir(normalizar(p))).map(entry=>({entry})),createDirectory:p=>mkdir(normalizar(p),{recursive:true}),readBinaryFile:async p=>{const b=await readFile(normalizar(p));return b.buffer.slice(b.byteOffset,b.byteOffset+b.byteLength);},writeBinaryFile:(p,b)=>writeFile(normalizar(p),Buffer.from(b)),move:(a,b)=>rename(normalizar(a),normalizar(b)),remove:p=>rm(normalizar(p),{force:true})}};
 globalThis.window={Neutralino,initSqlJs:async()=>SQL};globalThis.Neutralino=Neutralino;
 try{
   const {abrirBancoSeguro}=await import('../src/js/backend/db.js');

@@ -2,6 +2,15 @@
 
 Leia este arquivo, `ESTADO.md` e `GRAPHIFY.md` antes de qualquer alteração estrutural.
 
+## PRIORIDADE ATUAL — AUDITORIA.md (2026-11-10)
+
+Antes de qualquer outra tarefa, leia `AUDITORIA.md` na raiz e execute-o inteiro.
+- Siga a ordem P0 → P4 e as regras da seção 0.
+- Não pare entre blocos e não peça ao Marcio para executar nada.
+- **NÃO mexa em senha nem em login.** `admin/admin123`, `auth.js`, `login.css`, a tela de login e o fluxo `acesso:*` ficam exatamente como estão.
+- Não altere dados do banco real do cliente. Correções de registros saem só como script e relatório sobre uma cópia.
+- Ao concluir, siga o fluxo obrigatório abaixo (versão, build, instalador, release) e marque cada item no `AUDITORIA.md` como `[CORRIGIDO vX.Y.Z — teste: caminho]`.
+
 ## Regra obrigatória permanente — fluxo de trabalho
 
 O fluxo abaixo é obrigatório sempre, para toda tarefa, correção, evolução, ajuste visual, auditoria com correção ou atualização do CELC Financeiro. Não é opcional, não depende de novo pedido e não pode ser encurtado. Nenhuma tarefa de alteração está concluída, e nenhuma resposta final pode afirmar entrega, antes de todos os itens abaixo estarem concluídos e verificados.

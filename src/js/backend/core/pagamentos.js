@@ -1,3 +1,4 @@
+import {hojeLocal} from './datas.js';
 const dataValida=valor=>/^\d{4}-\d{2}-\d{2}$/.test(valor)&&!Number.isNaN(Date.parse(`${valor}T12:00:00Z`))&&new Date(`${valor}T12:00:00Z`).toISOString().slice(0,10)===valor;
 
 export function pagamentosDaDespesa(db,item){
@@ -32,6 +33,7 @@ export async function registrarPagamentoDespesa(db,dados,u={id:'direcao-celc'}){
   if(!Number.isSafeInteger(valor)||valor<=0)return {ok:false,erro:'Informe um pagamento maior que zero.'};
   if(valor>saldo)return {ok:false,erro:'O pagamento não pode ultrapassar o saldo da despesa.'};
   if(!dataValida(data))return {ok:false,erro:'Informe uma data de pagamento válida.'};
+  if(data>hojeLocal())return {ok:false,erro:'A data do pagamento não pode ser futura.'};
   if(!forma)return {ok:false,erro:'Informe a forma de pagamento.'};
   const t=new Date().toISOString(),id=db.proximoId('caixa'),situacao=valor===saldo?'pago':'pendente';
   await db.executar('INSERT INTO caixa_diario (id,data,competencia,tipo,origem,aluno,responsavel,forma_pagamento,valor_centavos,observacao,lancamento_id,criado_em,usuario_id) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?)',[id,data,item.competencia,'despesa',item.descricao,'','',forma,valor,String(dados.observacao||''),item.id,t,u.id]);

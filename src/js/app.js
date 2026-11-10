@@ -4,9 +4,13 @@ import {criarApiFinanceira as criarApi} from './backend/servidor.js';
 import {valorRealizado,saldoDoLancamento,pagamentosDaDespesa} from './backend/core/pagamentos.js';
 import {favorecidoDaDespesa} from './backend/core/dashboard.js';
 import {verificarAtualizacao,instalarAtualizacao} from './backend/atualizador.js';
+import {hojeLocal} from './backend/core/datas.js';
 
-const APP_VERSION='0.2.32';
-const hoje=new Date().toISOString().slice(0,10);
+const APP_VERSION='0.2.34';
+let hoje=hojeLocal();
+function centavosDe(texto){let s=String(texto??'').replace(/R\$|\s/g,'');if(s==='')return NaN;if(!/^\d{1,3}(\.\d{3})+(,\d{1,2})?$|^\d+(,\d{1,2})?$|^\d+\.\d{1,2}$/.test(s))return NaN;s=s.includes(',')?s.replace(/\./g,'').replace(',','.'):/^\d{1,3}(\.\d{3})+$/.test(s)?s.replace(/\./g,''):s;return Math.round(Number(s)*100);}
+const envios=new WeakSet();
+document.addEventListener('submit',evento=>{const form=evento.target;if(!(form instanceof HTMLFormElement)||form.id==='formLogin')return;if(envios.has(form)){evento.preventDefault();evento.stopImmediatePropagation();return;}envios.add(form);form.querySelectorAll('button').forEach(b=>b.disabled=true);setTimeout(()=>{envios.delete(form);form.querySelectorAll('button').forEach(b=>b.disabled=false);},1500);},true);
 const $=seletor=>document.querySelector(seletor);
 const $$=seletor=>Array.from(document.querySelectorAll(seletor));
 const brl=valor=>new Intl.NumberFormat('pt-BR',{style:'currency',currency:'BRL'}).format((Number(valor)||0)/100);
@@ -91,7 +95,7 @@ async function dashboard(){
       <div class="metric-strip"><span>Saldo esperado <b>${e.esperado===null?'Sem contagem de referência':brl(e.esperado)}</b></span><span>Movimentação líquida do mês <b>${brl(e.liquidoMes)}</b></span></div>
       ${e.base?`<p class="subtitle">Contagem de fechamento: ${dataPt(e.base.data)} · ${brl(e.base.valorCentavos)}</p>`:''}
       <details class="dashboard-contagem"><summary>${e.base?'Atualizar contagem':'Registrar contagem'}</summary>
-      <form id="formContagemEspecie" class="stack"><label>Data do fechamento<input name="data" type="date" required></label><label>Dinheiro contado (R$)<input name="valor" type="number" min="0" step="0.01" required></label><button class="primary-action" type="submit">Salvar contagem</button></form></details>
+      <form id="formContagemEspecie" class="stack"><label>Data do fechamento<input name="data" type="date" required></label><label>Dinheiro contado (R$)<input name="valor" type="text" inputmode="decimal" autocomplete="off" required></label><button class="primary-action" type="submit">Salvar contagem</button></form></details>
     </article></section>
     ${detalhesFinanceirosDashboard(r)}
     <section class="panel dashboard-section"><h3>Despesas de meses anteriores pagas neste mês</h3><p class="subtitle">${brl(r.anteriores)} já incluídos nas saídas do mês.</p>
@@ -148,18 +152,18 @@ function tabelaCaixa(itens){
 
 async function caixaDiario(){
   const resumo=await api('caixa:resumo',{data:hoje});
-  return `<section class="content-grid"><article class="panel"><h3>Fechamento do caixa diário</h3><p class="subtitle">Registre receitas e apenas despesas sem detalhamento. Use o detalhamento para localizar pagamentos já cadastrados ou incluir uma despesa pontual.</p><form id="formCaixa" class="stack wide-form"><div class="two-columns"><label>Data<input name="data" type="date" value="${hoje}" required></label><label>Receitas recebidas (R$)<input name="receita" type="number" step="0.01" min="0" placeholder="0,00"></label></div><label>Despesas sem detalhamento (R$)<input name="despesa" type="number" step="0.01" min="0" placeholder="0,00"></label><button class="outline-button" id="abrirDetalhamento" type="button">Detalhar despesas</button><button class="primary-action">Salvar fechamento diário</button></form></article><article class="panel"><h3>Resumo do dia</h3><div class="metric-strip school-metrics"><span>Receitas <b>${brl(resumo.receitas)}</b></span><span>Pagamentos <b>${brl(resumo.despesas)}</b></span><span>Saldo do dia <b>${brl(resumo.saldo)}</b></span></div><p class="subtitle">${resumo.quantidade} registro(s) financeiro(s) no fechamento de ${dataPt(hoje)}.</p></article></section><section class="panel"><div class="panel-heading"><div><h3>Movimentação do caixa</h3><p>${dataPt(hoje)}</p></div></div>${tabelaCaixa(resumo.itens)}</section>`;
+  return `<section class="content-grid"><article class="panel"><h3>Fechamento do caixa diário</h3><p class="subtitle">Registre receitas e apenas despesas sem detalhamento. Use o detalhamento para localizar pagamentos já cadastrados ou incluir uma despesa pontual.</p><form id="formCaixa" class="stack wide-form"><div class="two-columns"><label>Data<input name="data" type="date" value="${hoje}" required></label><label>Receitas recebidas (R$)<input name="receita" type="text" inputmode="decimal" autocomplete="off" placeholder="0,00"></label></div><label>Despesas sem detalhamento (R$)<input name="despesa" type="text" inputmode="decimal" autocomplete="off" placeholder="0,00"></label><button class="outline-button" id="abrirDetalhamento" type="button">Detalhar despesas</button><button class="primary-action">Salvar fechamento diário</button></form></article><article class="panel"><h3>Resumo do dia</h3><div class="metric-strip school-metrics"><span>Receitas <b>${brl(resumo.receitas)}</b></span><span>Pagamentos <b>${brl(resumo.despesas)}</b></span><span>Saldo do dia <b>${brl(resumo.saldo)}</b></span></div><p class="subtitle">${resumo.quantidade} registro(s) financeiro(s) no fechamento de ${dataPt(hoje)}.</p></article></section><section class="panel"><div class="panel-heading"><div><h3>Movimentação do caixa</h3><p>${dataPt(hoje)}</p></div></div>${tabelaCaixa(resumo.itens)}</section>`;
 }
 
 async function abrirDetalhamentoCaixa(){
   let modal=$('#modalDetalhamentoCaixa');
   if(!modal){
     modal=document.createElement('div');modal.className='modal-backdrop';modal.id='modalDetalhamentoCaixa';
-    modal.innerHTML=`<section class="modal stack caixa-detalhamento"><button type="button" class="close" id="fecharDetalhamento">×</button><p class="eyebrow">CAIXA DIÁRIO</p><h2>Detalhar despesas</h2><p class="subtitle">Todos os pagamentos de despesas cadastradas aparecem aqui, inclusive funcionários, terceirizados, categorias e pagamentos fixos. </p><label>Buscar despesa cadastrada<input id="buscaDespesaCaixa" placeholder="Funcionário, terceirizado, descrição ou categoria"></label><div id="resultadosDespesaCaixa" class="expense-search-results"></div><hr class="form-separator"><h3>Despesa não cadastrada</h3><form id="formDespesaAvulsaCaixa" class="stack"><label>Descrição<input name="origem" placeholder="Ex.: compra emergencial de material" required></label><div class="two-columns"><label>Valor (R$)<input name="valor" type="number" min="0.01" step="0.01" required></label><label>Pagamento<select name="formaPagamento" required><option value="">Selecione</option><option>Dinheiro</option><option>Pix</option><option>Transferência</option><option>Cartão</option><option>Boleto</option><option>Cheque compensado</option><option>Não informado</option></select></label></div><label>Mês de referência<select name="mesReferencia">${opcoesMeses()}</select></label><label>Observação opcional<input name="observacao" placeholder="Anotação interna"></label><div class="row-actions"><button class="outline-button" id="fecharDetalhamentoSecundario" type="button">Fechar</button><button class="primary-action" type="submit">Registrar despesa no caixa</button></div></form></section>`;
+    modal.innerHTML=`<section class="modal stack caixa-detalhamento"><button type="button" class="close" id="fecharDetalhamento">×</button><p class="eyebrow">CAIXA DIÁRIO</p><h2>Detalhar despesas</h2><p class="subtitle">Todos os pagamentos de despesas cadastradas aparecem aqui, inclusive funcionários, terceirizados, categorias e pagamentos fixos. </p><label>Buscar despesa cadastrada<input id="buscaDespesaCaixa" placeholder="Funcionário, terceirizado, descrição ou categoria"></label><div id="resultadosDespesaCaixa" class="expense-search-results"></div><hr class="form-separator"><h3>Despesa não cadastrada</h3><form id="formDespesaAvulsaCaixa" class="stack"><label>Descrição<input name="origem" placeholder="Ex.: compra emergencial de material" required></label><div class="two-columns"><label>Valor (R$)<input name="valor" type="text" inputmode="decimal" autocomplete="off" required></label><label>Pagamento<select name="formaPagamento" required><option value="">Selecione</option><option>Dinheiro</option><option>Pix</option><option>Transferência</option><option>Cartão</option><option>Boleto</option><option>Cheque compensado</option><option>Não informado</option></select></label></div><label>Mês de referência<select name="mesReferencia">${opcoesMeses()}</select></label><label>Observação opcional<input name="observacao" placeholder="Anotação interna"></label><div class="row-actions"><button class="outline-button" id="fecharDetalhamentoSecundario" type="button">Fechar</button><button class="primary-action" type="submit">Registrar despesa no caixa</button></div></form></section>`;
     document.body.append(modal);
     const fechar=()=>modal.classList.remove('show');$('#fecharDetalhamento').onclick=fechar;$('#fecharDetalhamentoSecundario').onclick=fechar;modal.onclick=evento=>{if(evento.target===modal)fechar()};
     $('#buscaDespesaCaixa').oninput=()=>listarDespesasDoCaixa();
-    $('#formDespesaAvulsaCaixa').onsubmit=async evento=>{evento.preventDefault();const dados=Object.fromEntries(new FormData(evento.currentTarget)),resposta=await api('caixa:registrar',{data:modal.dataset.data,origem:dados.origem,formaPagamento:dados.formaPagamento,mesReferencia:dados.mesReferencia,observacao:dados.observacao,despesasCentavos:Math.round(Number(dados.valor)*100)});aviso(resposta.ok?'Despesa pontual registrada no caixa.':resposta.erro,!resposta.ok);if(resposta.ok){fechar();render();}};
+    $('#formDespesaAvulsaCaixa').onsubmit=async evento=>{evento.preventDefault();const dados=Object.fromEntries(new FormData(evento.currentTarget)),resposta=await api('caixa:registrar',{data:modal.dataset.data,origem:dados.origem,formaPagamento:dados.formaPagamento,mesReferencia:dados.mesReferencia,observacao:dados.observacao,despesasCentavos:centavosDe(dados.valor)});aviso(resposta.ok?'Despesa pontual registrada no caixa.':resposta.erro,!resposta.ok);if(resposta.ok){fechar();render();}};
   }
   modal.dataset.data=$('#formCaixa [name="data"]')?.value||hoje;modal.classList.add('show');await listarDespesasDoCaixa();
 }
@@ -167,8 +171,8 @@ async function abrirDetalhamentoCaixa(){
 async function listarDespesasDoCaixa(){
   const modal=$('#modalDetalhamentoCaixa'),alvo=$('#resultadosDespesaCaixa');if(!modal||!alvo)return;
   const busca=$('#buscaDespesaCaixa')?.value||'',itens=(await api('lancamentos:listar',{tipo:'despesa',busca})).filter(item=>!liquidado(item));
-  alvo.innerHTML=itens.map(item=>`<article class="expense-search-result"><div><b>${esc(item.descricao)}</b><small>${esc(item.categoria)}${item.recorrencia==='mensal'?' · Pagamento fixo mensal':''} · Competência: ${dataPt(item.competencia)}</small><small>Total ${brl(item.valorCentavos)} · Pago ${brl(item.pagoCentavos||0)} · Saldo ${brl(item.saldoCentavos??item.valorCentavos)}</small></div><div><label>Valor deste pagamento (R$)<input data-valor-pagamento-caixa type="number" min="0.01" step="0.01" max="${((item.saldoCentavos??item.valorCentavos)/100).toFixed(2)}" value="${((item.saldoCentavos??item.valorCentavos)/100).toFixed(2)}"></label><label>Forma do pagamento<select data-forma-pagamento-caixa><option value="">Selecione</option><option>Dinheiro</option><option>Pix</option><option>Transferência</option><option>Cartão</option><option>Boleto</option><option>Cheque compensado</option><option>Não informado</option></select></label><button class="text-button" data-pagar-despesa-caixa="${esc(item.id)}">Registrar pagamento</button></div></article>`).join('')||'<p class="subtitle">Nenhuma despesa em aberto encontrada.</p>';
-  $$('[data-pagar-despesa-caixa]').forEach(botao=>botao.onclick=async()=>{botao.disabled=true;try{const registro=botao.closest('.expense-search-result'),valor=registro.querySelector('[data-valor-pagamento-caixa]').value,resposta=await api('caixa:pagarDespesa',{id:botao.dataset.pagarDespesaCaixa,data:modal.dataset.data,valorCentavos:Math.round(Number(valor)*100),formaPagamento:registro.querySelector('[data-forma-pagamento-caixa]').value});aviso(resposta.ok?'Pagamento registrado na despesa e no caixa.':resposta.erro,!resposta.ok);if(resposta.ok){modal.classList.remove('show');render();}}catch(erro){aviso(erro.message||'Não foi possível registrar o pagamento.',true);}finally{botao.disabled=false;}});
+  alvo.innerHTML=itens.map(item=>`<article class="expense-search-result"><div><b>${esc(item.descricao)}</b><small>${esc(item.categoria)}${item.recorrencia==='mensal'?' · Pagamento fixo mensal':''} · Competência: ${dataPt(item.competencia)}</small><small>Total ${brl(item.valorCentavos)} · Pago ${brl(item.pagoCentavos||0)} · Saldo ${brl(item.saldoCentavos??item.valorCentavos)}</small></div><div><label>Valor deste pagamento (R$)<input data-valor-pagamento-caixa type="text" inputmode="decimal" autocomplete="off" value="${((item.saldoCentavos??item.valorCentavos)/100).toFixed(2)}"></label><label>Forma do pagamento<select data-forma-pagamento-caixa><option value="">Selecione</option><option>Dinheiro</option><option>Pix</option><option>Transferência</option><option>Cartão</option><option>Boleto</option><option>Cheque compensado</option><option>Não informado</option></select></label><button class="text-button" data-pagar-despesa-caixa="${esc(item.id)}">Registrar pagamento</button></div></article>`).join('')||'<p class="subtitle">Nenhuma despesa em aberto encontrada.</p>';
+  $$('[data-pagar-despesa-caixa]').forEach(botao=>botao.onclick=async()=>{botao.disabled=true;try{const registro=botao.closest('.expense-search-result'),valor=registro.querySelector('[data-valor-pagamento-caixa]').value,resposta=await api('caixa:pagarDespesa',{id:botao.dataset.pagarDespesaCaixa,data:modal.dataset.data,valorCentavos:centavosDe(valor),formaPagamento:registro.querySelector('[data-forma-pagamento-caixa]').value});aviso(resposta.ok?'Pagamento registrado na despesa e no caixa.':resposta.erro,!resposta.ok);if(resposta.ok){modal.classList.remove('show');render();}}catch(erro){aviso(erro.message||'Não foi possível registrar o pagamento.',true);}finally{botao.disabled=false;}});
 }
 
 function tabelaDevedores(itens){
@@ -178,10 +182,10 @@ function tabelaDevedores(itens){
 async function alunosDevedores(){
   const itens=await api('devedores:listar',{});
   const aberto=itens.filter(x=>x.situacao!=='quitado'),saldoAberto=aberto.reduce((s,x)=>s+Math.max(0,x.valorCentavos-Number(x.valorPagoCentavos||0)),0);
-  return `<section class="content-grid"><article class="panel"><h3>Novo aluno devedor</h3><form id="formDevedor" class="stack wide-form"><div class="two-columns"><label>Aluno<input name="aluno" required></label><label>Turma<input name="turma" placeholder="Ex.: 6º ano A"></label></div><div class="two-columns"><label>Responsável<input name="responsavel"></label><label>Contato<input name="contato" placeholder="Telefone ou WhatsApp"></label></div><label>Pendência<input name="descricao" placeholder="Ex.: mensalidade de agosto, matrícula, material" required></label><div class="two-columns"><label>Vencimento<input name="vencimento" type="date" value="${hoje}" required></label><label>Valor em aberto (R$)<input name="valor" type="number" step="0.01" min="0.01" required></label></div><label>Observação<input name="observacao" placeholder="Acordo, histórico ou anotação interna"></label><button class="primary-action">Registrar devedor</button></form></article><article class="panel"><h3>Resumo de cobrança</h3><div class="metric-strip school-metrics"><span>Em aberto <b>${aberto.length}</b></span><span>Saldo pendente <b>${brl(saldoAberto)}</b></span></div><p class="subtitle">Recebimentos totais ou parciais atualizam o saldo do aluno, o Caixa diário e as Entradas.</p></article></section><section class="panel"><div class="panel-heading"><div><h3>Alunos com pendência</h3><p>${aberto.length} registro(s) em aberto ou parcial</p></div></div>${tabelaDevedores(itens)}</section>`;
+  return `<section class="content-grid"><article class="panel"><h3>Novo aluno devedor</h3><form id="formDevedor" class="stack wide-form"><div class="two-columns"><label>Aluno<input name="aluno" required></label><label>Turma<input name="turma" placeholder="Ex.: 6º ano A"></label></div><div class="two-columns"><label>Responsável<input name="responsavel"></label><label>Contato<input name="contato" placeholder="Telefone ou WhatsApp"></label></div><label>Pendência<input name="descricao" placeholder="Ex.: mensalidade de agosto, matrícula, material" required></label><div class="two-columns"><label>Vencimento<input name="vencimento" type="date" value="${hoje}" required></label><label>Valor em aberto (R$)<input name="valor" type="text" inputmode="decimal" autocomplete="off" required></label></div><label>Observação<input name="observacao" placeholder="Acordo, histórico ou anotação interna"></label><button class="primary-action">Registrar devedor</button></form></article><article class="panel"><h3>Resumo de cobrança</h3><div class="metric-strip school-metrics"><span>Em aberto <b>${aberto.length}</b></span><span>Saldo pendente <b>${brl(saldoAberto)}</b></span></div><p class="subtitle">Recebimentos totais ou parciais atualizam o saldo do aluno, o Caixa diário e as Entradas.</p></article></section><section class="panel"><div class="panel-heading"><div><h3>Alunos com pendência</h3><p>${aberto.length} registro(s) em aberto ou parcial</p></div></div>${tabelaDevedores(itens)}</section>`;
 }
 
-function abrirRecebimentoDevedor(id,saldo){let modal=$('#modalRecebimentoDevedor');if(!modal){modal=document.createElement('div');modal.className='modal-backdrop';modal.id='modalRecebimentoDevedor';modal.innerHTML=`<form class="modal stack" id="formRecebimentoDevedor"><p class="eyebrow">ALUNOS DEVEDORES</p><h2>Receber pagamento</h2><p class="subtitle" id="saldoDevedorModal"></p><label>Data<input name="data" type="date" value="${hoje}" required></label><label>Valor recebido (R$)<input name="valor" type="number" step="0.01" min="0.01" required></label><label>Forma de pagamento<select name="formaPagamento"><option value="">Não informar</option><option>Dinheiro</option><option>Pix</option><option>Cartão</option><option>Boleto</option><option>Transferência</option></select></label><label>Observação opcional<input name="observacao"></label><div class="row-actions"><button class="outline-button" id="cancelarRecebimento" type="button">Cancelar</button><button class="primary-action" type="submit">Confirmar recebimento</button></div></form>`;document.body.append(modal);$('#cancelarRecebimento').onclick=()=>modal.classList.remove('show');modal.onclick=evento=>{if(evento.target===modal)modal.classList.remove('show')};$('#formRecebimentoDevedor').onsubmit=async evento=>{evento.preventDefault();const dados=Object.fromEntries(new FormData(evento.currentTarget)),resposta=await api('devedores:baixar',{id:modal.dataset.devedorId,...dados,valorCentavos:Math.round(Number(dados.valor)*100)});aviso(resposta.ok?(resposta.situacao==='quitado'?'Pendência quitada e entrada registrada.':'Pagamento parcial registrado.'):resposta.erro,!resposta.ok);if(resposta.ok){modal.classList.remove('show');render();}};}modal.dataset.devedorId=id;$('#saldoDevedorModal').textContent=`Saldo atual: ${brl(saldo)}. Informe o valor total ou parcial recebido.`;const form=$('#formRecebimentoDevedor');form.valor.value=(saldo/100).toFixed(2);form.data.value=hoje;modal.classList.add('show');}
+function abrirRecebimentoDevedor(id,saldo){let modal=$('#modalRecebimentoDevedor');if(!modal){modal=document.createElement('div');modal.className='modal-backdrop';modal.id='modalRecebimentoDevedor';modal.innerHTML=`<form class="modal stack" id="formRecebimentoDevedor"><p class="eyebrow">ALUNOS DEVEDORES</p><h2>Receber pagamento</h2><p class="subtitle" id="saldoDevedorModal"></p><label>Data<input name="data" type="date" value="${hoje}" required></label><label>Valor recebido (R$)<input name="valor" type="text" inputmode="decimal" autocomplete="off" required></label><label>Forma de pagamento<select name="formaPagamento"><option value="">Não informar</option><option>Dinheiro</option><option>Pix</option><option>Cartão</option><option>Boleto</option><option>Transferência</option></select></label><label>Observação opcional<input name="observacao"></label><div class="row-actions"><button class="outline-button" id="cancelarRecebimento" type="button">Cancelar</button><button class="primary-action" type="submit">Confirmar recebimento</button></div></form>`;document.body.append(modal);$('#cancelarRecebimento').onclick=()=>modal.classList.remove('show');modal.onclick=evento=>{if(evento.target===modal)modal.classList.remove('show')};$('#formRecebimentoDevedor').onsubmit=async evento=>{evento.preventDefault();const dados=Object.fromEntries(new FormData(evento.currentTarget)),resposta=await api('devedores:baixar',{id:modal.dataset.devedorId,...dados,valorCentavos:centavosDe(dados.valor)});aviso(resposta.ok?(resposta.situacao==='quitado'?'Pendência quitada e entrada registrada.':'Pagamento parcial registrado.'):resposta.erro,!resposta.ok);if(resposta.ok){modal.classList.remove('show');render();}};}modal.dataset.devedorId=id;$('#saldoDevedorModal').textContent=`Saldo atual: ${brl(saldo)}. Informe o valor total ou parcial recebido.`;const form=$('#formRecebimentoDevedor');form.valor.value=(saldo/100).toFixed(2);form.data.value=hoje;modal.classList.add('show');}
 
 async function categorias(){
   const itens=await api('categorias:listar');
@@ -194,7 +198,7 @@ async function relatorios(){
   const botaoAba=([id,nome])=>`<button class="report-tab ${relatorioAba===id?'active':''}" data-relatorio-aba="${id}">${nome}</button>`;
   const linhaCategoria=(item,tipo)=>`<article class="report-category"><div><b>${esc(item.categoria)}</b><span class="type-badge ${tipo}">${tipo}</span></div><div class="report-numbers"><span>Realizado <b>${brl(item.realizado)}</b></span><span>${tipo==='entrada'?'A receber':'A pagar'} <b>${brl(item.pendente)}</b></span><span>Projetado <b>${brl(item.projetado)}</b></span></div></article>`;
   const cartaoCategoria=(item,tipo)=>`<article class="category-total-card ${tipo}"><div><span class="type-badge ${tipo}">${tipo}</span><b>${esc(item.categoria)}</b></div><small>${tipo==='entrada'?'Arrecadado no período':'Gasto no período'}</small><strong>${brl(item.realizado)}</strong><p>${item.quantidade} lançamento${item.quantidade===1?'':'s'} no período</p><button class="text-button" type="button" data-detalhar-categoria="${esc(item.categoria)}" data-tipo-categoria="${tipo}">Detalhar</button></article>`;
-  const geral=`<section class="report-metrics"><article><span>Entradas realizadas</span><b class="in">${brl(t.entradasRealizadas)}</b><small>Valores efetivamente recebidos</small></article><article><span>Despesas realizadas</span><b class="out">${brl(t.despesasRealizadas)}</b><small>Valores efetivamente pagos</small></article><article><span>Resultado realizado</span><b>${brl(t.resultadoRealizado)}</b><small>Entradas menos despesas realizadas</small></article><article><span>Saldo projetado</span><b>${brl(t.saldoProjetado)}</b><small>Saldo acumulado mais o saldo a receber, menos o saldo a pagar</small></article></section><section class="report-cards"><article class="panel"><h3>Compromissos em aberto até o fim do filtro</h3><div class="metric-strip report-strip"><span>A receber <b>${brl(t.aReceber)}</b></span><span>A pagar <b>${brl(t.aPagar)}</b></span></div><p class="subtitle">Valores pendentes não são somados ao realizado; aparecem somente na projeção.</p></article><article class="panel"><h3>Saldos dos lançamentos</h3><div class="metric-strip"><span>Saldo trazido <b>${brl(t.saldoInicial)}</b></span><span>Saldo acumulado <b>${brl(t.saldoFinal)}</b></span></div><p class="subtitle">Todas as formas de pagamento. O saldo acumulado não é dinheiro em espécie.</p></article></section>`;
+  const geral=`<section class="report-metrics"><article><span>Entradas realizadas</span><b class="in">${brl(t.entradasRealizadas)}</b><small>Valores efetivamente recebidos</small></article><article><span>Despesas realizadas</span><b class="out">${brl(t.despesasRealizadas)}</b><small>Valores efetivamente pagos</small></article><article><span>Resultado realizado</span><b>${brl(t.resultadoRealizado)}</b><small>Entradas menos despesas realizadas</small></article><article><span>Saldo projetado</span><b>${brl(t.saldoProjetado)}</b><small>Saldo acumulado mais o saldo a receber, menos o saldo a pagar</small></article></section><section class="report-cards"><article class="panel"><h3>Compromissos em aberto até o fim do filtro</h3><div class="metric-strip report-strip"><span>A receber (exceto mensalidades de alunos) <b>${brl(t.aReceber)}</b></span><span>A pagar <b>${brl(t.aPagar)}</b></span></div><p class="subtitle">Valores pendentes não são somados ao realizado; aparecem somente na projeção.</p></article><article class="panel"><h3>Saldos dos lançamentos</h3><div class="metric-strip"><span>Saldo trazido <b>${brl(t.saldoInicial)}</b></span><span>Saldo acumulado <b>${brl(t.saldoFinal)}</b></span></div><p class="subtitle">Todas as formas de pagamento. O saldo acumulado não é dinheiro em espécie.</p></article></section>`;
   const categorias=`<section class="panel category-dashboard"><div class="panel-heading"><div><h3>Resultado por categoria</h3><p>O total é sempre o valor efetivamente arrecadado ou gasto no período selecionado.</p></div></div><h4>Receitas arrecadadas</h4><div class="category-total-grid">${relatorio.categoriasEntrada.map(item=>cartaoCategoria(item,'entrada')).join('')||'<p class="subtitle">Nenhuma categoria de entrada cadastrada.</p>'}</div><h4>Despesas realizadas</h4><div class="category-total-grid">${relatorio.categoriasDespesa.map(item=>cartaoCategoria(item,'despesa')).join('')||'<p class="subtitle">Nenhuma categoria de despesa cadastrada.</p>'}</div></section>`;
   const entradas=`<section class="panel report-list"><div class="panel-heading"><div><h3>Entradas por categoria</h3><p>Recebido, a receber e projeção por origem de receita.</p></div></div>${relatorio.categoriasEntrada.map(item=>linhaCategoria(item,'entrada')).join('')||'<p class="subtitle">Nenhuma entrada no período selecionado.</p>'}</section>`;
   const despesas=`<section class="panel report-list"><div class="panel-heading"><div><h3>Despesas por categoria</h3><p>Pago, a pagar e projeção por centro de custo.</p></div></div>${relatorio.categoriasDespesa.map(item=>linhaCategoria(item,'despesa')).join('')||'<p class="subtitle">Nenhuma despesa no período selecionado.</p>'}</section>`;
@@ -230,6 +234,7 @@ async function configuracoes(){
 }
 
 async function render(){
+  hoje=hojeLocal();
   const meta=telas[tela]||telas.dashboard;
   $('#rotulo').textContent=meta.rotulo;
   $('#titulo').textContent=meta.titulo;
@@ -281,7 +286,7 @@ function abrirModal(item=null,predefinido={}){
   form.recorrencia.value=item?.recorrencia||predefinido.recorrencia||'avulso';
   if(item){
     form.descricao.value=item.descricao;
-    form.valor.value=(item.valorCentavos/100).toFixed(2);
+    form.valor.value=(item.valorCentavos/100).toFixed(2).replace('.',',');
     form.competencia.value=item.competencia;
     form.vencimento.value=item.vencimento||'';
     $('#modalTitulo').textContent='Editar lançamento';
@@ -298,10 +303,17 @@ function abrirModal(item=null,predefinido={}){
 function prepararPagamentos(form,item){
   $('#pagamentosDespesa')?.remove();
   $('#campoFavorecido')?.remove();
+  $('#campoDataLiquidacao')?.remove();
   form.liquidacao.disabled=false;
   form.valor.closest('label').firstChild.textContent=form.tipo.value==='despesa'?'Valor integral (R$)':'Valor (R$)';
-  form.liquidacao.innerHTML=form.tipo.value==='despesa'?'<option value="aberto">Sem pagamento agora</option><option value="realizado">Pagamento integral</option><option value="parcial">Pagamentos parciais</option>':'<option value="aberto">Ainda não realizado</option><option value="realizado">Realizado hoje</option>';
-  if(form.tipo.value!=='despesa'){form.liquidacao.value=item&&liquidado(item)?'realizado':'aberto';return;}
+  form.liquidacao.innerHTML=form.tipo.value==='despesa'?'<option value="aberto">Sem pagamento agora</option><option value="realizado">Pagamento integral</option><option value="parcial">Pagamentos parciais</option>':'<option value="aberto">Ainda não recebido</option><option value="realizado">Recebido</option>';
+  if(form.tipo.value!=='despesa'){
+    form.liquidacao.value=item&&liquidado(item)?'realizado':'aberto';
+    form.liquidacao.closest('label').insertAdjacentHTML('afterend',`<label id="campoDataLiquidacao">Data do recebimento<input name="dataLiquidacao" type="date" max="${hoje}" value="${esc(item?.liquidadoEm?.slice(0,10)||hoje)}"></label>`);
+    const campo=$('#campoDataLiquidacao');campo.hidden=form.liquidacao.value!=='realizado';
+    form.liquidacao.onchange=()=>{campo.hidden=form.liquidacao.value!=='realizado';};
+    return;
+  }
   form.descricao.closest('label').insertAdjacentHTML('afterend',`<label id="campoFavorecido">Favorecido<input name="favorecido" maxlength="120" value="${esc(item?favorecidoDaDespesa(banco,item.id):'')}"></label>`);
   const pagamentos=item?pagamentosDaDespesa(banco,item):[],pago=item?valorRealizado(banco,item):0;
   form.insertAdjacentHTML('beforeend',`<section id="pagamentosDespesa"><div class="metric-strip"><span>Total pago <b>${brl(pago)}</b></span><span>Saldo <b id="saldoDespesa">${brl((item?.valorCentavos||0)-pago)}</b></span></div>${pagamentos.length?`<h3>Pagamentos registrados</h3><div class="payment-history">${pagamentos.map(p=>`<p>${dataPt(p.data)} · ${brl(p.valorCentavos)} · ${esc(p.formaPagamento)}</p>`).join('')}</div>`:''}<div id="novosPagamentos" hidden><div id="linhasPagamentos"></div><button type="button" id="adicionarPagamento" class="outline-button">Adicionar pagamento</button></div></section>`);
@@ -312,7 +324,7 @@ function prepararPagamentos(form,item){
   form.liquidacao.disabled=Boolean(item&&saldoDoLancamento(banco,item)===0);
   form.liquidacao.onchange=()=>{
     const area=$('#novosPagamentos');area.hidden=form.liquidacao.value==='aberto';$('#linhasPagamentos').innerHTML='';
-    if(!area.hidden)adicionarLinhaPagamento(form.liquidacao.value==='realizado'?Math.max(0,Math.round(Number(form.valor.value||0)*100)-pago):0);
+    if(!area.hidden)adicionarLinhaPagamento(form.liquidacao.value==='realizado'?Math.max(0,centavosDe(form.valor.value||0)-pago):0);
     $('#adicionarPagamento').hidden=form.liquidacao.value!=='parcial';
     atualizarLinhasPagamento();
   };
@@ -322,7 +334,7 @@ function prepararPagamentos(form,item){
 
 function adicionarLinhaPagamento(valor=0){
   const linha=document.createElement('div');linha.className='payment-row';
-  linha.innerHTML=`<label>Data<input data-pagamento-data type="date" value="${hoje}" required></label><label>Valor pago (R$)<input data-pagamento-valor type="number" min="0.01" step="0.01" value="${valor?(valor/100).toFixed(2):''}"></label><label>Forma<select data-pagamento-forma><option value="">Selecione</option><option>Dinheiro</option><option>Pix</option><option>Transferência</option><option>Cartão</option><option>Boleto</option><option>Cheque compensado</option><option>Não informado</option></select></label><button type="button" class="text-button danger" aria-label="Remover pagamento">Remover</button>`;
+  linha.innerHTML=`<label>Data<input data-pagamento-data type="date" value="${hoje}" required></label><label>Valor pago (R$)<input data-pagamento-valor type="text" inputmode="decimal" autocomplete="off" value="${valor?(valor/100).toFixed(2).replace('.',','):''}"></label><label>Forma<select data-pagamento-forma><option value="">Selecione</option><option>Dinheiro</option><option>Pix</option><option>Transferência</option><option>Cartão</option><option>Boleto</option><option>Cheque compensado</option><option>Não informado</option></select></label><button type="button" class="text-button danger" aria-label="Remover pagamento">Remover</button>`;
   linha.querySelector('button').onclick=()=>{linha.remove();atualizarLinhasPagamento();};
   linha.querySelector('[data-pagamento-valor]').oninput=atualizarLinhasPagamento;
   $('#linhasPagamentos').append(linha);
@@ -330,7 +342,7 @@ function adicionarLinhaPagamento(valor=0){
 
 function atualizarLinhasPagamento(){
   const form=$('#formLancamento');if(!$('#saldoDespesa'))return;
-  const linhas=$$('#linhasPagamentos .payment-row'),totalNovo=linhas.reduce((s,l)=>s+Math.round(Number(l.querySelector('[data-pagamento-valor]').value||0)*100),0),saldo=Math.round(Number(form.valor.value||0)*100)-Number(form.dataset.pagoAnterior||0)-totalNovo;
+  const linhas=$$('#linhasPagamentos .payment-row'),totalNovo=linhas.reduce((s,l)=>s+centavosDe(l.querySelector('[data-pagamento-valor]').value||0),0),saldo=centavosDe(form.valor.value||0)-Number(form.dataset.pagoAnterior||0)-totalNovo;
   $('#saldoDespesa').textContent=brl(saldo);
   if(saldo<=0)linhas.filter(l=>l.querySelector('[data-pagamento-valor]').value==='').forEach(l=>l.remove());
   if(form.liquidacao.value==='parcial'&&saldo>0&&(!linhas.length||linhas.at(-1).querySelector('[data-pagamento-valor]').value))adicionarLinhaPagamento();
@@ -344,8 +356,8 @@ async function preencherHistoricoDescricao(){
   if(!ultimo)return;
   await preencherCategorias(ultimo.categoriaId||banco.listarCategorias().find(c=>c.tipo===tipo&&c.nome===ultimo.categoria)?.id);
   if(form.tipo.value!==tipo||form.descricao.value.trim().toLocaleLowerCase('pt-BR')!==nome)return;
-  form.valor.value=(ultimo.valorCentavos/100).toFixed(2);form.recorrencia.value=ultimo.recorrencia;
-  if(ultimo.vencimento){const mes=form.competencia.value.slice(0,7),periodo=periodoMensal(mes);form.vencimento.value=`${mes}-${String(Math.min(Number(ultimo.vencimento.slice(8,10)),Number(periodo.fim.slice(8,10)))).padStart(2,'0')}`;}
+  if(!form.valor.value)form.valor.value=(ultimo.valorCentavos/100).toFixed(2).replace('.',',');
+  if(ultimo.vencimento&&!form.vencimento.value){const mes=form.competencia.value.slice(0,7),periodo=periodoMensal(mes);form.vencimento.value=`${mes}-${String(Math.min(Number(ultimo.vencimento.slice(8,10)),Number(periodo.fim.slice(8,10)))).padStart(2,'0')}`;}
   atualizarTextoRecorrencia();form.valor.dispatchEvent(new Event('input'));
 }
 
@@ -373,7 +385,7 @@ function ligarEventos(){
     const form=evento.currentTarget,dados=new FormData(form),botao=form.querySelector('button');
     botao.disabled=true;
     try{
-      const r=await api('caixa:salvarContagem',{data:dados.get('data'),valorCentavos:Math.round(Number(dados.get('valor'))*100)});
+      const r=await api('caixa:salvarContagem',{data:dados.get('data'),valorCentavos:centavosDe(dados.get('valor'))});
       if(!r.ok){aviso(r.erro,true);return;}
       aviso('Contagem salva.');await render();
     }catch(erro){aviso(erro.message||'Não foi possível salvar a contagem.',true);}
@@ -445,7 +457,7 @@ function ligarEventos(){
   $('#formCaixa')&&($('#formCaixa').onsubmit=async evento=>{
     evento.preventDefault();
     const dados=Object.fromEntries(new FormData(evento.currentTarget));
-    const resposta=await api('caixa:registrar',{...dados,formaPagamento:'Não informado',receitasCentavos:Math.round(Number(dados.receita||0)*100),despesasCentavos:Math.round(Number(dados.despesa||0)*100)});
+    const resposta=await api('caixa:registrar',{...dados,formaPagamento:'Não informado',receitasCentavos:centavosDe(dados.receita||0),despesasCentavos:centavosDe(dados.despesa||0)});
     aviso(resposta.ok?'Fechamento diário registrado.':resposta.erro,!resposta.ok);
     if(resposta.ok)render();
   });
@@ -463,7 +475,7 @@ function ligarEventos(){
   $('#formDevedor')&&($('#formDevedor').onsubmit=async evento=>{
     evento.preventDefault();
     const dados=Object.fromEntries(new FormData(evento.currentTarget));
-    const resposta=await api('devedores:registrar',{...dados,valorCentavos:Math.round(Number(dados.valor)*100)});
+    const resposta=await api('devedores:registrar',{...dados,valorCentavos:centavosDe(dados.valor)});
     aviso(resposta.ok?'Aluno devedor registrado.':resposta.erro,!resposta.ok);
     if(resposta.ok)render();
   });
@@ -534,7 +546,7 @@ function ligarBase(){
     atualizarSugestoesDescricao();
     prepararPagamentos(form,edicao);
   };
-  $('#formLancamento').descricao.oninput=()=>{atualizarSugestoesDescricao();preencherHistoricoDescricao();};
+  $('#formLancamento').descricao.oninput=()=>{atualizarSugestoesDescricao();};
   $('#formLancamento').descricao.onchange=preencherHistoricoDescricao;
   $('#formLancamento').onsubmit=async evento=>{
     evento.preventDefault();
@@ -542,8 +554,8 @@ function ligarBase(){
     const dadosForm=Object.fromEntries(new FormData(form));
     const categoria=(await api('categorias:listar')).find(item=>item.id===dadosForm.categoriaId);
     const tipo=form.dataset.tipoFixo||form.tipo.value;
-    const dados={...dadosForm,tipo,categoria:categoria?.nome||'',liquidado:dadosForm.liquidacao==='realizado',valorCentavos:Math.round(Number(dadosForm.valor)*100)};
-    const pagamentos=tipo==='despesa'&&form.liquidacao.value!=='aberto'?$$('#linhasPagamentos .payment-row').filter(l=>l.querySelector('[data-pagamento-valor]').value!=='').map(l=>({data:l.querySelector('[data-pagamento-data]').value,valorCentavos:Math.round(Number(l.querySelector('[data-pagamento-valor]').value)*100),formaPagamento:l.querySelector('[data-pagamento-forma]').value})):[];
+    const dados={...dadosForm,tipo,categoria:categoria?.nome||'',liquidado:dadosForm.liquidacao==='realizado',valorCentavos:centavosDe(dadosForm.valor)};
+    const pagamentos=tipo==='despesa'&&form.liquidacao.value!=='aberto'?$$('#linhasPagamentos .payment-row').filter(l=>l.querySelector('[data-pagamento-valor]').value!=='').map(l=>({data:l.querySelector('[data-pagamento-data]').value,valorCentavos:centavosDe(l.querySelector('[data-pagamento-valor]').value),formaPagamento:l.querySelector('[data-pagamento-forma]').value})):[];
     if(tipo==='despesa'&&form.liquidacao.value!=='aberto'&&!form.liquidacao.disabled&&!pagamentos.length){$('#erroLancamento').textContent='Adicione pelo menos um pagamento.';return;}
     if(tipo==='despesa'&&form.liquidacao.value==='realizado'&&pagamentos.reduce((s,p)=>s+p.valorCentavos,0)!==dados.valorCentavos-(edicao?valorRealizado(banco,edicao):0)){$('#erroLancamento').textContent='O pagamento integral deve corresponder ao saldo da despesa.';return;}
     const botao=form.querySelector('button.primary-action');botao.disabled=true;
@@ -604,15 +616,28 @@ function vigiarJanela(){
 function ativarBackupNoFechamento(){
   const neutralino=window.Neutralino;
   if(!neutralino?.events?.on)return;
+  const oferecerFechamento=()=>{
+    const dialogo=document.createElement('dialog');
+    dialogo.className='modal';
+    dialogo.innerHTML='<h2>Backup não concluído</h2><p>O backup automático falhou. Você pode continuar no programa ou fechá-lo sem esse backup.</p><div class="row-actions"><button type="button" class="outline-button">Continuar no programa</button><button type="button" class="primary-action">Fechar mesmo assim</button></div>';
+    const [continuar,fechar]=dialogo.querySelectorAll('button');
+    dialogo.addEventListener('close',()=>{dialogo.remove();fechamentoEmAndamento=false;},{once:true});
+    continuar.onclick=()=>dialogo.close();
+    fechar.onclick=async()=>{
+      fechar.disabled=true;
+      try{await neutralino.app.exit(0);}catch{aviso('Não foi possível fechar o aplicativo.',true);dialogo.close();}
+    };
+    document.body.append(dialogo);dialogo.showModal();
+  };
   neutralino.events.on('windowClose',async()=>{
     if(fechamentoEmAndamento)return;
     fechamentoEmAndamento=true;
     try{
       await banco.aguardarPersistencia();
       const resposta=await api('backup:criar');
-      if(!resposta.ok){aviso(`O aplicativo permanece aberto: ${resposta.erro}`,true);fechamentoEmAndamento=false;return;}
+      if(!resposta.ok){oferecerFechamento();return;}
       await neutralino.app.exit(0);
-    }catch(erro){aviso('O aplicativo permanece aberto porque o backup automático não foi concluído.',true);fechamentoEmAndamento=false;}
+    }catch{oferecerFechamento();}
   });
 }
 

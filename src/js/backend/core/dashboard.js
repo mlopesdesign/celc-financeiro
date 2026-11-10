@@ -1,3 +1,4 @@
+import {hojeLocal} from './datas.js';
 import {fluxoRealizado} from './pagamentos.js';
 
 const chaveContagem='contagem_caixa_especie';
@@ -19,7 +20,7 @@ function contagem(db){
   try{return JSON.parse(db.obterConfiguracao?.(chaveContagem)||'null');}catch{return null;}
 }
 
-export async function salvarContagemEspecie(db,{data,valorCentavos},hoje=new Date().toISOString().slice(0,10)){
+export async function salvarContagemEspecie(db,{data,valorCentavos},hoje=hojeLocal()){
   if(!dataValida(data)||data>=hoje)return {ok:false,erro:'Informe a data de fechamento de um dia anterior.'};
   if(!Number.isSafeInteger(valorCentavos)||valorCentavos<0)return {ok:false,erro:'Informe o valor contado em dinheiro, inclusive zero.'};
   await db.salvarConfiguracao(chaveContagem,JSON.stringify({data,valorCentavos}));
@@ -32,13 +33,13 @@ function caixaEspecie(db,caixa,inicio,ate){
   return {base,liquidoMes:saldo(esp.filter(x=>x.data>=inicio)),esperado:base&&base.data<=ate?base.valorCentavos+saldo(esp.filter(x=>x.data>base.data)):null};
 }
 
-export function resumirDashboard(db,{referencia,hoje=new Date().toISOString().slice(0,10)}){
+export function resumirDashboard(db,{referencia,hoje=hojeLocal()}){
   const mes=referencia.slice(0,7),[ano,numero]=mes.split('-').map(Number);
   const ultimoDia=new Date(Date.UTC(ano,numero,0)).getUTCDate();
   return resumirPeriodoFinanceiro(db,{inicio:mes+'-01',fim:mes+'-'+ultimoDia,hoje});
 }
 
-export function resumirPeriodoFinanceiro(db,{inicio,fim,hoje=new Date().toISOString().slice(0,10)}){
+export function resumirPeriodoFinanceiro(db,{inicio,fim,hoje=hojeLocal()}){
   const mes=inicio.slice(0,7),ate=fim<hoje?fim:hoje;
   const lancamentos=db.listarLancamentos(),caixa=db.listarCaixaDiario?.()||[];
   const recebimentos=new Map(caixa.filter(x=>x.tipo==='entrada'&&x.lancamentoId&&dataValida(x.data)).map(x=>[x.lancamentoId,x]));

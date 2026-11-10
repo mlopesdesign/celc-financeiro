@@ -32,7 +32,7 @@ const SQL=await iniciarSql({locateFile:arquivo=>path.join(raiz,'src','js','vendo
 
 function criarBanco({comMovimento=true}={}){
   const db=new SQL.Database();
-  db.run('CREATE TABLE lancamentos (id TEXT); CREATE TABLE auditoria (id TEXT); CREATE TABLE acesso (id TEXT);');
+  db.run('CREATE TABLE lancamentos (id TEXT); CREATE TABLE auditoria (id TEXT); CREATE TABLE acesso (id TEXT); CREATE TABLE categorias (id TEXT); CREATE TABLE configuracoes (chave TEXT); CREATE TABLE caixa_diario (id TEXT); CREATE TABLE alunos_devedores (id TEXT);');
   if(comMovimento)db.run("INSERT INTO lancamentos (id) VALUES ('teste')");
   const bytes=db.export();
   db.close();

@@ -1,3 +1,5 @@
+import {hojeLocal} from './datas.js';
+import {estornarDevedorDoCaixa} from './estorno.js';
 const agora=()=>new Date().toISOString();
 const dinheiro=x=>Number(x);
 
@@ -12,7 +14,7 @@ export async function registrarCaixaDiario(db,dados,u={id:'direcao-celc'}){
   const competenciaDespesa=despesa?dataDeCompetencia(dados.mesReferencia||data.slice(0,7),data.slice(8,10)):null;
   if(despesa&&!competenciaDespesa)return {ok:false,erro:'Selecione um mês de referência válido para a despesa.'};
   const t=agora(),registros=[];
-  for(const [tipo,valor] of [['entrada',receita],['despesa',despesa]]){if(!valor)continue;const id=db.proximoId('caixa'),lancamentoId=db.proximoId('lanc'),competencia=tipo==='despesa'?competenciaDespesa:data,descricao=`Caixa diário - ${tipo==='entrada'?'receita':'despesa'}${origem!=='Fechamento diário'?` - ${origem}`:''}`,categoria=tipo==='entrada'?'Caixa diário - receitas':'Caixa diário - despesas';await db.executar('INSERT INTO lancamentos (id,descricao,tipo,categoria_id,categoria,valor_centavos,competencia,vencimento,liquidado_em,situacao,recorrencia,criado_em,atualizado_em,usuario_id) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?)',[lancamentoId,descricao,tipo,tipo==='entrada'?'cat-receitas':'cat-utilidades',categoria,valor,competencia,null,t,tipo==='entrada'?'recebido':'pago','avulso',t,t,u.id]);await db.executar('INSERT INTO caixa_diario (id,data,competencia,tipo,origem,aluno,responsavel,forma_pagamento,valor_centavos,observacao,lancamento_id,criado_em,usuario_id) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?)',[id,data,competencia,tipo,origem,texto(dados.aluno),texto(dados.responsavel),forma,valor,texto(dados.observacao),lancamentoId,t,u.id]);await db.executar('INSERT INTO auditoria (usuario_id,acao,entidade,entidade_id,criado_em,detalhes) VALUES (?,?,?,?,?,?)',[u.id,'registrar','caixa_diario',id,t,descricao]);registros.push({id,data,competencia,tipo,origem,aluno:texto(dados.aluno),responsavel:texto(dados.responsavel),formaPagamento:forma,valorCentavos:valor,observacao:texto(dados.observacao),lancamentoId,criadoEm:t,usuarioId:u.id});}
+  for(const [tipo,valor] of [['entrada',receita],['despesa',despesa]]){if(!valor)continue;const id=db.proximoId('caixa'),lancamentoId=db.proximoId('lanc'),competencia=tipo==='despesa'?competenciaDespesa:data,descricao=`Caixa diário - ${tipo==='entrada'?'receita':'despesa'}${origem!=='Fechamento diário'?` - ${origem}`:''}`,categoria=tipo==='entrada'?'Caixa diário - receitas':'Caixa diário - despesas';await db.executar('INSERT INTO lancamentos (id,descricao,tipo,categoria_id,categoria,valor_centavos,competencia,vencimento,liquidado_em,situacao,recorrencia,criado_em,atualizado_em,usuario_id) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?)',[lancamentoId,descricao,tipo,tipo==='entrada'?'cat-caixa-receitas':'cat-caixa-despesas',categoria,valor,competencia,null,t,tipo==='entrada'?'recebido':'pago','avulso',t,t,u.id]);await db.executar('INSERT INTO caixa_diario (id,data,competencia,tipo,origem,aluno,responsavel,forma_pagamento,valor_centavos,observacao,lancamento_id,criado_em,usuario_id) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?)',[id,data,competencia,tipo,origem,texto(dados.aluno),texto(dados.responsavel),forma,valor,texto(dados.observacao),lancamentoId,t,u.id]);await db.executar('INSERT INTO auditoria (usuario_id,acao,entidade,entidade_id,criado_em,detalhes) VALUES (?,?,?,?,?,?)',[u.id,'registrar','caixa_diario',id,t,descricao]);registros.push({id,data,competencia,tipo,origem,aluno:texto(dados.aluno),responsavel:texto(dados.responsavel),formaPagamento:forma,valorCentavos:valor,observacao:texto(dados.observacao),lancamentoId,criadoEm:t,usuarioId:u.id});}
   return {ok:true,caixas:registros};
 }
 
@@ -27,7 +29,7 @@ export function resumirCaixaDiario(db,{data=''}={}){
 }
 
 export async function pagarDespesaNoCaixa(db,dados,u={id:'direcao-celc'}){
-  const id=texto(dados.id),data=texto(dados.data)||agora().slice(0,10),forma=texto(dados.formaPagamento)||'Dinheiro',item=db.listarLancamentos().find(x=>x.id===id);
+  const id=texto(dados.id),data=texto(dados.data)||hojeLocal(),forma=texto(dados.formaPagamento)||'Dinheiro',item=db.listarLancamentos().find(x=>x.id===id);
   if(!item)return {ok:false,erro:'Despesa cadastrada não encontrada.'};
   if(item.tipo!=='despesa')return {ok:false,erro:'Somente despesas podem ser registradas no caixa.'};
   if(item.situacao==='pago'||item.liquidadoEm)return {ok:false,erro:'Esta despesa já foi paga.'};
@@ -51,6 +53,7 @@ export async function excluirCaixaDiario(db,id,u={id:'direcao-celc'}){
     if(gerado)await db.executar('DELETE FROM lancamentos WHERE id=?',[lancamento.id]);
     else {const restantes=db.listarCaixaDiario().filter(x=>x.tipo==='despesa'&&x.lancamentoId===lancamento.id&&x.id!==caixaId),pago=restantes.reduce((s,x)=>s+x.valorCentavos,0),situacao=pago>=lancamento.valorCentavos?'pago':lancamento.vencimento&&lancamento.vencimento<item.data?'vencido':'pendente';await db.executar('UPDATE lancamentos SET situacao=?,liquidado_em=?,atualizado_em=? WHERE id=?',[situacao,situacao==='pago'?lancamento.liquidadoEm:null,t,lancamento.id]);}
   }
+  if((item.tipo||'entrada')==='entrada'){await estornarDevedorDoCaixa(db,item,lancamento);if(lancamento&&lancamento.tipo==='entrada'&&!db.listarCaixaDiario().some(x=>x.lancamentoId===lancamento.id&&x.id!==caixaId))await db.executar('DELETE FROM lancamentos WHERE id=?',[lancamento.id]);}
   await db.executar('DELETE FROM caixa_diario WHERE id=?',[caixaId]);
   await db.executar('INSERT INTO auditoria (usuario_id,acao,entidade,entidade_id,criado_em,detalhes) VALUES (?,?,?,?,?,?)',[u.id,'excluir','caixa_diario',caixaId,item.origem||'']);
   return {ok:true};
@@ -75,14 +78,14 @@ export async function baixarDevedor(db,id,dados={},u={id:'direcao-celc'}){
   const item=db.listarDevedores().find(x=>x.id===id),pagoAnterior=Number(item?.valorPagoCentavos||0),saldo=Math.max(0,Number(item?.valorCentavos||0)-pagoAnterior);
   if(!item)return {ok:false,erro:'Aluno devedor não encontrado.'};
   if(item.situacao==='quitado'||!saldo)return {ok:false,erro:'Esta pendência já foi quitada.'};
-  const data=texto(dados.data)||agora().slice(0,10),valor=valorCentavos(dados.valorCentavos),forma=texto(dados.formaPagamento)||'Não informado';
+  const data=texto(dados.data)||hojeLocal(),valor=valorCentavos(dados.valorCentavos),forma=texto(dados.formaPagamento)||'Não informado';
   if(!/^\d{4}-\d{2}-\d{2}$/.test(data))return {ok:false,erro:'Informe a data do pagamento.'};
   if(!valor)return {ok:false,erro:'Informe o valor recebido.'};
   if(valor>saldo)return {ok:false,erro:'O pagamento não pode ser maior que o saldo devedor.'};
   const t=agora(),novoPago=pagoAnterior+valor,situacao=novoPago>=item.valorCentavos?'quitado':'parcial',lancamentoId=db.proximoId('lanc'),caixaId=db.proximoId('caixa'),descricao=`Pagamento de aluno - ${item.aluno} - ${item.descricao}`;
   await db.executar('UPDATE alunos_devedores SET situacao=?, valor_pago_centavos=?, atualizado_em=? WHERE id=?',[situacao,novoPago,t,id]);
   await db.executar('INSERT INTO lancamentos (id,descricao,tipo,categoria_id,categoria,valor_centavos,competencia,vencimento,liquidado_em,situacao,recorrencia,criado_em,atualizado_em,usuario_id) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?)',[lancamentoId,descricao,'entrada','cat-receitas','Receitas escolares',valor,data,null,t,'recebido','avulso',t,t,u.id]);
-  await db.executar('INSERT INTO caixa_diario (id,data,tipo,origem,aluno,responsavel,forma_pagamento,valor_centavos,observacao,lancamento_id,criado_em,usuario_id) VALUES (?,?,?,?,?,?,?,?,?,?,?,?)',[caixaId,data,'entrada','Recebimento de pendência',item.aluno,item.responsavel||'',forma,valor,texto(dados.observacao)||item.descricao,lancamentoId,t,u.id]);
+  await db.executar('INSERT INTO caixa_diario (id,data,tipo,origem,aluno,responsavel,forma_pagamento,valor_centavos,observacao,lancamento_id,criado_em,usuario_id,devedor_id) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?)',[caixaId,data,'entrada','Recebimento de pendência',item.aluno,item.responsavel||'',forma,valor,texto(dados.observacao)||item.descricao,lancamentoId,t,u.id,id]);
   await db.executar('INSERT INTO auditoria (usuario_id,acao,entidade,entidade_id,criado_em,detalhes) VALUES (?,?,?,?,?,?)',[u.id,'receber_pagamento','aluno_devedor',id,t,`${item.aluno}: ${valor}`]);
   return {ok:true,situacao,saldoRestante:item.valorCentavos-novoPago,lancamentoId,caixaId};
 }

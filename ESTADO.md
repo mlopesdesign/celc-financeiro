@@ -1,6 +1,50 @@
 # Estado do projeto — CELC Financeiro
 
-**Versão atual:** `0.2.32`
+**Versão publicada:** `0.2.34` (atualização online, 2026-11-10)
+
+
+## P1 da ordem de serviço — 0.2.34 publicada em 2026-11-10 (Claude)
+
+- Corrigido e provado por `tests/p1-calculos.mjs` (sql.js real, API de produção, relógio fixo às 22h30 de 31/10, fusos America/Sao_Paulo e UTC) e por teste no navegador (Chrome, fuso Brasília, 22h30):
+  - CALC-02 / UI-02: data local em todo o app e no backend. Depois das 21h nada vai para o dia seguinte; a data é recalculada a cada tela.
+  - CALC-08 / UI-03: novo campo "Data do recebimento" nas entradas recebidas. Data futura é recusada. A data de um recebimento já baixado pode ser corrigida.
+  - CALC-09: a baixa do saldo de despesa não força mais "Dinheiro".
+  - CALC-03 / CALC-04 / CALC-13: excluir uma entrada (pelo lançamento ou pelo caixa) remove a linha correspondente e estorna o aluno devedor (nova coluna `caixa_diario.devedor_id`). O valor e o tipo de entrada gerada pelo caixa não podem ser editados em Entradas.
+  - CALC-05 / CALC-06: a recorrência usa o último dia do mês quando o dia não existe, gera modelos com o mesmo nome e preenche até 3 meses sem abertura do programa. Data inexistente é recusada.
+  - CALC-07: lançamentos novos do caixa usam `cat-caixa-receitas` e `cat-caixa-despesas`.
+  - CALC-12 e CALC-14.
+  - UI-05: campo de valor em texto, com "1.234,56", "1.200" e "R$ 10" convertidos corretamente.
+  - UI-06: clique duplo bloqueado.
+  - UI-07: o autopreenchimento não sobrescreve valor nem recorrência.
+- Decisão aplicada: rótulo "A receber (exceto mensalidades de alunos)" (CALC-11). UI-08/CALC-10 ficou pendente porque mudaria números históricos do fechamento diário.
+- Senha e login intocados (`auth.js` e `login.css` sem alteração).
+- Registros antigos não foram alterados. Os dados reais do diagnóstico (possíveis duplicidades, categorias `cat-receitas` com dois nomes) aguardam a decisão do Marcio.
+- Suíte completa aprovada no Windows nos dois fusos. Build Neutralino feito numa cópia em `%TEMP%`, porque o drive Z: recusa `chmod`.
+- Release v0.2.34 no GitHub com `resources.neu`, `latest.json` e `SHA256SUMS.txt`. Sem instalador, por decisão do Marcio. SHA-256 do `resources.neu`: `C34633605F7D6F138A2A42F2ADF548725945FFA312C3C85B033B07B31A39B6BB`.
+- Pendentes da AUDITORIA: P2 (segurança, exceto senha e login) e P3 (interface e release restantes).
+
+## P0 da ordem de serviço — encerrado em 2026-11-10
+
+- REL-01: histórico da 0.2.30 à 0.2.32 sincronizado no drive Z; tags anotadas e conteúdo verificados. A tag histórica 0.2.24 divergente ficou intacta.
+- DADOS-02/01/03/04/05: leitura bloqueada é recusada; recuperação por cópia válida, persistência com verificação e três tentativas, recarga após falha, recusa de sobrescrita com versão desatualizada e backup obrigatório antes de restaurar.
+- CALC-01: despesas com ou sem favorecido e contagem em espécie gravam e reabrem. Não há exportação do SQLite dentro da transação; senha, login e rotina de acesso não foram editados.
+- Validação: RED e GREEN nos dois fusos às 22h30 com API de produção, sql.js real e disco isolado; suíte completa aprovada. Executável Windows em WebView2 isolado reproduziu as três falhas na 0.2.32 e passou no pacote P0.
+- Evidências locais: `evidencias/diagnostico-dados-2026-11-10.md` e `evidencias/testes-p0-2026-11-10.txt`. Banco real com hash idêntico antes/depois do diagnóstico; nenhuma reclassificação aplicada.
+- P1 não iniciado. Sem push de 0.2.33, GitHub Release ou troca da instalação atual.
+
+## Auditoria técnica externa — 2026-11-10 (contexto preservado)
+
+- `AUDITORIA.md` é a ordem de serviço. A aritmética de dashboard, relatórios e exportações bateu em 64 conferências de cenário controlado; isso não valida a qualidade dos lançamentos reais.
+- Permanecem abertas as suspeitas de data em UTC após 21h, interpretação de `1.200` como R$ 1,20, clique duplo, edição/exclusão deixando vínculos órfãos, recorrência com datas inválidas, valor sobrescrito pelo autopreenchimento e renomeação de categoria fundindo com caixa. O apontamento sobre `login.css` (SEG-01) está fora de escopo.
+- O P0 resolveu os achados de histórico, falha de gravação de despesas e proteção do banco documentados acima. A auditoria anterior em `audit-output/` não é aprovação (seção 6). Alterar registros existentes continua condicionado à análise do diagnóstico da seção 3 e à autorização do Márcio.
+
+## Auditoria de encerramento — 2026-11-10
+
+- Na versão 0.2.32, a categoria `debitos` aparece em Entradas porque está cadastrada com esse tipo. O relatório inclui categorias sem movimento; a linha zerada não altera os totais do mês.
+- Há seis recebimentos históricos nessa categoria, sem forma de pagamento registrada. A classificação não foi alterada: o nome não distingue recebimento no cartão de débito de saída debitada em conta.
+- Pendência: distinguir categorias de receita e formas de pagamento na interface e conferir a natureza dos lançamentos históricos antes de qualquer reclassificação.
+- Auditoria somente leitura. Nenhum lançamento, instalador ou código do aplicativo foi alterado para registrar este encerramento.
+- Fechamento de cada trabalho: registrar no estado o que foi entregue, o que foi verificado e o que permanece pendente; regenerar e conferir o Graphify, mesmo se o conteúdo não mudar. Em entregas de versão, aguardar a conclusão das verificações de build, instalador e publicação e conferir manifesto e hashes antes de anunciar a entrega.
 
 ## Relatórios conciliados — 0.2.32
 

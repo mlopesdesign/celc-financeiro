@@ -1,3 +1,4 @@
+import {hojeLocal} from './datas.js';
 import {resumirPeriodoFinanceiro} from './dashboard.js';
 
 export function gerarCsvLancamentos(lancamentos) {
@@ -32,7 +33,7 @@ export function detalharCategoria(db,{categoria='',tipo='',inicio='',fim='',hoje
   return {ok:true,categoria:nome,tipo,inicio:r.inicio,fim:r.fim,totais:{realizado,pendente,projetado:realizado+pendente},itens:movimentos,movimentos,pendencias};
 }
 
-export function resumirRelatorios(db,{inicio='',fim='',hoje=new Date().toISOString().slice(0,10)}={}){
+export function resumirRelatorios(db,{inicio='',fim='',hoje=hojeLocal()}={}){
   const inicioPadrao=inicio||`${hoje.slice(0,7)}-01`,fimPadrao=fim||hoje;
   const financeiro=resumirPeriodoFinanceiro(db,{inicio:inicioPadrao,fim:fimPadrao,hoje});
   const {entradas:entradasRealizadas,saidas:despesasRealizadas,aReceber,aPagar,movimentos:fluxo}=financeiro;
@@ -129,4 +130,4 @@ export async function exportarRelatorio(Neutralino, banco,filtros={}) {
   return { ok: true, caminho };
 }
 
-export async function exportarRelatorioPdf(Neutralino,banco,filtros={}){if(!Neutralino||banco.modo!=='sqlite')return {ok:false,erro:'A exportação está disponível no executável Windows.'};const pasta=`${banco.caminho.slice(0,banco.caminho.lastIndexOf('\\'))}\\exportacoes`;try{await Neutralino.filesystem.createDirectory(pasta)}catch{}const caminho=`${pasta}\\relatorio-financeiro-${new Date().toISOString().slice(0,10)}.pdf`,bytes=gerarPdfRelatorio(resumirRelatorios(banco,filtros));await Neutralino.filesystem.writeBinaryFile(caminho,bytes);return {ok:true,caminho};}
+export async function exportarRelatorioPdf(Neutralino,banco,filtros={}){if(!Neutralino||banco.modo!=='sqlite')return {ok:false,erro:'A exportação está disponível no executável Windows.'};const pasta=`${banco.caminho.slice(0,banco.caminho.lastIndexOf('\\'))}\\exportacoes`;try{await Neutralino.filesystem.createDirectory(pasta)}catch{}const caminho=`${pasta}\\relatorio-financeiro-${hojeLocal()}.pdf`,bytes=gerarPdfRelatorio(resumirRelatorios(banco,filtros));await Neutralino.filesystem.writeBinaryFile(caminho,bytes);return {ok:true,caminho};}

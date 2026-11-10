@@ -2,6 +2,18 @@
 
 Este arquivo registra tentativas, falhas e resultados observáveis para evitar repetição de erros.
 
+## 2026-11-10 — fechamento exclusivo do P0 da ordem de serviço
+
+1. **REL-01 — `tests/p0-rel-01.mjs`.** RED: no Z, `fatal: Not a valid object name v0.2.30` (saída 1 nos dois fusos). Confirmado que as três releases já existiam no remoto. Sincronizado o histórico 0.2.30 a 0.2.32 e conferido o conteúdo das tags; GREEN nos dois fusos. A tag 0.2.24 divergente não foi sobrescrita.
+2. **Diagnóstico da seção 3 — `tools/diagnostico-p0.mjs`.** Cópia verificada por SHA-256, SQLite somente leitura e integridade OK. Relatório em `evidencias/diagnostico-dados-2026-11-10.md`; nenhum registro real corrigido.
+3. **DADOS-02 — `tests/p0-persistencia.mjs DADOS-02`.** RED: leitura bloqueada não era rejeitada; teste adicional reproduziu o mesmo risco quando `getStats` alegava ausência. GREEN: recusa ambos, sem sobrescrita; recusa também cabeçalho inválido.
+4. **DADOS-01 — `tests/p0-persistencia.mjs DADOS-01`.** RED C2: 0 em vez de 2 lançamentos. GREEN: recupera `.tmp` válido primeiro, usa `.old` se necessário e mantém `.bak` com a última versão confirmada.
+5. **DADOS-03 — `tests/p0-persistencia.mjs DADOS-03`.** RED C1: memória com 2 registros após falha, disco com 1. GREEN: três tentativas, recarga, nova gravação funciona. O WebView2 exibiu “Fechar mesmo assim” após falha simulada do backup.
+6. **DADOS-04 — `tests/p0-persistencia.mjs DADOS-04`.** RED: uma instância desatualizada gravava por cima da outra. GREEN: comparação dos bytes confirmados recusa a gravação, preserva banco e backup e recarrega a versão do disco.
+7. **DADOS-05 — `tests/p0-persistencia.mjs DADOS-05`.** RED: restauração aceitava trocar sem cópia prévia. GREEN: aguarda a fila, recusa backup incompleto, protege o original e aborta se a pré-cópia falhar.
+8. **CALC-01 — `tests/p0-persistencia.mjs CALC-01` e `tools/p0-windows.mjs`.** RED: erro de COMMIT nos três cenários. GREEN: duas despesas gravadas e contagem reaberta; credencial idêntica e válida. Reproduzido e confirmado em Windows com WebView2 e APPDATA isolado.
+9. **Fechamento local `v0.2.33`.** Suíte e testes de regressão em America/Sao_Paulo e UTC, às 22h30; saída em `evidencias/testes-p0-2026-11-10.txt`. Sem publicação e sem execução do P1.
+
 ## 2026-09-01 — correção definitiva da atualização online
 
 1. **Auditoria da instalação — sucesso.** O processo instalado estava aberto com `resources.neu` de hash `721157046F505FD5D4AA46F7CFD52EC5E52894CE3AD8D5A53795104F80F97EA9`; o banco externo tinha hash `F16B1CA039D934431EDF3596AE8E25A34F28A3CF34F20A22FB9BB91D4B39D92F`; o manifesto público indicava 0.2.10.
@@ -43,3 +55,36 @@ Este arquivo registra tentativas, falhas e resultados observáveis para evitar r
 37. **Auditoria completa de skills — concluída com ressalvas.** `npm test` aprovou todos os 14 grupos; 16 arquivos JavaScript passaram no `node --check`; UTF-8 aprovou 46 arquivos; Graphify executou; ownership map analisou 32 commits/80 arquivos sem código sensível órfão; Playwright CLI respondeu. A auditoria de integridade validou clone e comparação de uma fixture SQLite, mas ficou `INCONCLUSIVE` para o cliente porque não há `celc-financeiro.db` local para clonar e nenhuma atualização online com dados foi executada. A revisão de segurança encontrou pacote de atualização sem hash/assinatura verificada e credencial inicial previsível. Relatórios em `audit-output/`.
 38. **Correção do hash do pacote — 0.2.29 — sucesso técnico.** O manifesto agora carrega `resourcesSha256`; o atualizador calcula o SHA-256 do `resources.neu` baixado e aborta antes da troca quando o hash não confere. A senha permaneceu inalterada por decisão do responsável. Testes, build Neutralino, Setup NSIS e `/S /VALIDATE` passaram; release local preparada em `Release/v0.2.29/`. A publicação GitHub e a prova online com banco clonado ainda são as próximas etapas obrigatórias.
 39. **Publicação e conferência online da 0.2.29 — sucesso parcial.** Commit `9aa9555`, tag `v0.2.29` e GitHub Release publicados com Setup, `resources.neu`, `latest.json` e `SHA256SUMS.txt`. O manifesto e o pacote foram baixados pelo endpoint `releases/latest`; o SHA-256 online bateu `4986DAA41590A461059B44795EDC8A5B93CD2C4CB038A914067D651D6264D954`. A prova de atualização em instalação com banco real permanece pendente por falta de um banco autorizado para clonar.
+40. **Auditoria técnica externa (Claude) — 2026-11-10 — concluída, somente leitura.**
+    - Quatro frentes: cálculos e relatórios, interface, segurança, persistência e release.
+    - Provas com sql.js real, Playwright e reprodução de falhas de disco.
+    - **Certo:** os relatórios fecham entre si (64 conferências).
+    - **Errado:**
+      - CALC-01: salvar despesa sempre falha;
+      - SEG-01: login desligado;
+      - DADOS-01, DADOS-02 e DADOS-03: perda de banco;
+      - CALC-02: data em UTC;
+      - CALC-03 e CALC-04: caixa órfão;
+      - UI-05: valor "1.200" vira R$ 1,20;
+      - UI-06: duplicação por clique duplo;
+      - REL-01: versões 0.2.30 a 0.2.32 fora do git.
+    - Ordem de serviço em `AUDITORIA.md`. `ESTADO.md` atualizado; `GRAPHIFY.md` regenerado, sem mudança de mapa, com uma seção de auditoria acrescentada.
+    - Nada do aplicativo, do banco ou das releases foi alterado.
+41. **Conferência independente do P0 (Claude) — 2026-11-10 — aprovada.**
+    - Os roteiros de prova da auditoria foram rodados contra a 0.2.33, sem usar os testes do Codex:
+      - CALC-01: despesa com e sem favorecido grava;
+      - DADOS-01, DADOS-02 e DADOS-03: banco preservado em queda, leitura bloqueada e falha de gravação.
+    - `npm test` aprovado nos fusos America/Sao_Paulo e UTC.
+    - Senha e login intocados: `auth.js` e `login.css` sem alteração.
+    - Tags v0.2.30 a v0.2.33 presentes no repositório local, ainda sem push.
+    - As 4 divergências restantes do cenário de 64 conferências pertencem ao P1 (CALC-03, caixa órfão) ou eram expectativas erradas do auditor.
+    - Diagnóstico real: possíveis duplicidades em lançamentos (R$ 5.810,00) e no caixa (R$ 10.980,00); `cat-receitas` com dois nomes ("Caixa diário - receitas" e "Receitas escolares"), o que confirma o CALC-07 nos dados reais.
+42. **P1 executado e publicado pelo Claude — 0.2.34 — 2026-11-10 — sucesso.**
+    - O Codex esgotou o tempo depois do P0. O Claude corrigiu os itens de cálculo do P1, criou `tests/p1-calculos.mjs` (25 grupos) e validou no navegador às 22h30: data local, valor "1.234,56", clique duplo e despesa salva.
+    - Suíte completa aprovada no Windows nos fusos Sao_Paulo e UTC.
+    - Build feito numa cópia em `%TEMP%`, porque o Z: recusa `chmod`.
+    - Release v0.2.34 publicada como atualização online, sem instalador.
+    - **Errado e corrigido no caminho:**
+      - a substituição automática de `Math.round(Number(...)*100)` atingiu a própria `centavosDe` (recursão). O teste pegou e a função foi corrigida;
+      - o stub do navegador não tinha `getStats` (exigido pela P0); o stub foi ajustado, sem mudança no app.
+    - Senha e login intocados.

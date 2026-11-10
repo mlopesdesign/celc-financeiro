@@ -12,7 +12,9 @@
 - `src/js/backend/core/backup.js`
 - `src/js/backend/core/categorias.js`
 - `src/js/backend/core/dashboard.js`
+- `src/js/backend/core/datas.js`
 - `src/js/backend/core/escolar.js`
+- `src/js/backend/core/estorno.js`
 - `src/js/backend/core/lancamentos.js`
 - `src/js/backend/core/pagamentos.js`
 - `src/js/backend/core/relatorios.js`
@@ -67,6 +69,8 @@
 | `backup:criar` | src/js/app.js |
 | `lancamentos:recorrencias` | src/js/app.js |
 | `lancamentos:atualizarVencidos` | src/js/app.js |
+| `backup:restaurar` | src/js/backend/servidor.js |
+| `backup:restaurar` | src/js/backend/servidor.js |
 | `painel:fluxo` | src/js/backend/servidor.js |
 | `caixa:salvarContagem` | src/js/backend/servidor.js |
 | `despesas:salvar` | src/js/backend/servidor.js |
@@ -111,3 +115,12 @@
 - Atualização exige backup válido e versão superior.
 - Regras financeiras ficam no backend/core, nunca na interface.
 
+
+## Auditoria 2026-11-10 — estado no mapa (0.2.34)
+
+> Seção mantida após a regeneração. Recoloque-a enquanto houver itens abertos em `AUDITORIA.md`.
+
+- `core/datas.js` é a fonte única do dia local (`hojeLocal`) e da data efetiva (`AAAA-MM-DDT12:00:00.000Z`), usada pelo app e por `lancamentos`, `escolar`, `pagamentos`, `dashboard` e `relatorios`.
+- `core/estorno.js`: excluir uma entrada de pagamento de aluno estorna `alunos_devedores` (via `caixa_diario.devedor_id`, ou pela descrição nos registros antigos).
+- `lancamentos.excluirLancamento` e `escolar.excluirCaixaDiario` mantêm sincronizados `caixa_diario`, `lancamentos` e `alunos_devedores`.
+- Ainda abertos: P2 de segurança (exceto senha e login) e P3 de interface e release (ver `AUDITORIA.md`).

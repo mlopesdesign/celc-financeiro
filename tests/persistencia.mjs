@@ -1,5 +1,5 @@
 import assert from 'node:assert/strict';
-import {mkdtemp,readFile,rename,rm,writeFile,mkdir} from 'node:fs/promises';
+import {mkdtemp,readFile,rename,rm,writeFile,mkdir,stat,readdir} from 'node:fs/promises';
 import {tmpdir} from 'node:os';
 import path from 'node:path';
 import {fileURLToPath} from 'node:url';
@@ -17,6 +17,8 @@ const paraDisco=caminho=>caminho.replaceAll('\\',path.sep);
 const Neutralino={
   os:{getEnv:async nome=>nome==='APPDATA'?pasta:''},
   filesystem:{
+    getStats:async caminho=>{try{return await stat(paraDisco(caminho));}catch(e){if(e.code==='ENOENT')e.code='NE_FS_NOPATHE';throw e;}},
+    readDirectory:async caminho=>(await readdir(paraDisco(caminho))).map(entry=>({entry})),
     createDirectory:async caminho=>mkdir(paraDisco(caminho),{recursive:true}),
     readBinaryFile:async caminho=>{const dados=await readFile(paraDisco(caminho));return dados.buffer.slice(dados.byteOffset,dados.byteOffset+dados.byteLength);},
     writeBinaryFile:async(caminho,dados)=>writeFile(paraDisco(caminho),Buffer.from(dados)),

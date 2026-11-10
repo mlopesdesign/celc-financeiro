@@ -14,21 +14,113 @@ function normalizarBytes(dados){
   return null;
 }
 function mesmosBytes(esperado,gravado){return esperado.length===gravado.length&&esperado.every((byte,indice)=>byte===gravado[indice])}
-async function salvarComSeguranca(caminho,bytes){
-  const arquivos=window.Neutralino?.filesystem;
-  if(!arquivos)throw new Error('A API de arquivos do Windows não está disponível.');
-  const esperado=normalizarBytes(bytes);
-  if(!esperado)throw new Error('O SQLite não gerou dados válidos para gravação.');
-  const tmp=`${caminho}.tmp`,old=`${caminho}.old`;
-  await arquivos.writeBinaryFile(tmp,esperado);
-  try{await arquivos.remove(old)}catch{}
-  try{await arquivos.move(caminho,old)}catch{}
-  try{await arquivos.move(tmp,caminho)}catch(erro){try{await arquivos.move(old,caminho)}catch{}throw erro}
-  try{await arquivos.remove(old)}catch{}
-  const gravado=normalizarBytes(await arquivos.readBinaryFile(caminho));
-  if(!gravado||!mesmosBytes(esperado,gravado))throw new Error('A gravação do SQLite não foi confirmada no disco.');
+const mesmoBanco=(a,b)=>a===null||b===null?a===b:mesmosBytes(a,b);
+const conflitoBanco=()=>Object.assign(new Error('Banco alterado por outra instância. A gravação foi cancelada.'),{code:'CELC_BANCO_ALTERADO'});
+const temCabecalho=bytes=>bytes?.length>=100&&new TextDecoder().decode(bytes.slice(0,16))==='SQLite format 3\u0000';
+const erroBancoBloqueado=()=>new Error('Banco bloqueado; feche outros programas e reabra');
+async function lerBancoSeExiste(arquivos,caminho){
+  try{await arquivos.getStats(caminho);}
+  catch(erro){
+    if(erro?.code!=='NE_FS_NOPATHE')throw erroBancoBloqueado();
+    const separador=caminho.lastIndexOf('\\'),nome=caminho.slice(separador+1).toLowerCase();
+    let entradas;
+    try{entradas=await arquivos.readDirectory(caminho.slice(0,separador));}catch{throw erroBancoBloqueado();}
+    if(!Array.isArray(entradas)||entradas.some(x=>x.entry?.toLowerCase()===nome))throw erroBancoBloqueado();
+    return null;
+  }
+  try{return normalizarBytes(await arquivos.readBinaryFile(caminho))||new Uint8Array();}
+  catch{throw erroBancoBloqueado();}
 }
-function adaptador(sql,modo,caminho=''){let fila=Promise.resolve();const persistir=()=>{if(modo!=='sqlite')return Promise.resolve();const bytes=sql.export();fila=fila.then(()=>salvarComSeguranca(caminho,bytes)).catch(erro=>{console.error('Falha ao persistir o banco.',erro);throw erro});return fila};const executar=(q,p=[])=>{sql.run(q,p);persistir().catch(()=>{});return Promise.resolve()};const linhas=(q,p=[])=>{const r=sql.exec(q,p);return r[0]?r[0].values.map(v=>Object.fromEntries(r[0].columns.map((c,i)=>[c,v[i]]))):[]};return {modo,caminho,proximoId:(p='id')=>`${p}-${crypto.randomUUID()}`,executar,linhas,aguardarPersistencia:()=>fila,listarLancamentos:()=>linhas('SELECT * FROM lancamentos ORDER BY competencia DESC, criado_em DESC').map(x=>({id:x.id,descricao:x.descricao,tipo:x.tipo,categoriaId:x.categoria_id,categoria:x.categoria,valorCentavos:x.valor_centavos,competencia:x.competencia,vencimento:x.vencimento,liquidadoEm:x.liquidado_em,situacao:x.situacao,recorrencia:x.recorrencia,criadoEm:x.criado_em,atualizadoEm:x.atualizado_em,usuarioId:x.usuario_id})),listarCategorias:(ativas=true)=>linhas(`SELECT * FROM categorias ${ativas?'WHERE ativa=1':''} ORDER BY tipo,nome`).map(x=>({id:x.id,nome:x.nome,tipo:x.tipo,ativa:Boolean(x.ativa)})),listarCaixaDiario:()=>linhas('SELECT * FROM caixa_diario ORDER BY data DESC, criado_em DESC').map(x=>({id:x.id,data:x.data,competencia:x.competencia||'',tipo:x.tipo||'entrada',origem:x.origem,aluno:x.aluno,responsavel:x.responsavel,formaPagamento:x.forma_pagamento,valorCentavos:x.valor_centavos,observacao:x.observacao,lancamentoId:x.lancamento_id,criadoEm:x.criado_em,usuarioId:x.usuario_id})),listarDevedores:()=>linhas('SELECT * FROM alunos_devedores ORDER BY situacao, vencimento ASC, criado_em DESC').map(x=>({id:x.id,aluno:x.aluno,turma:x.turma,responsavel:x.responsavel,contato:x.contato,descricao:x.descricao,valorCentavos:x.valor_centavos,valorPagoCentavos:x.valor_pago_centavos||0,vencimento:x.vencimento,situacao:x.situacao,observacao:x.observacao,criadoEm:x.criado_em,atualizadoEm:x.atualizado_em,usuarioId:x.usuario_id})),obterCredencial:()=>linhas('SELECT usuario,sal,hash,iteracoes FROM acesso WHERE id=1')[0]||null,salvarCredencial:x=>executar('INSERT OR REPLACE INTO acesso (id,usuario,sal,hash,iteracoes) VALUES (1,?,?,?,?)',[x.usuario,x.sal,x.hash,x.iteracoes]),obterConfiguracao:k=>linhas('SELECT valor FROM configuracoes WHERE chave=?',[k])[0]?.valor||'',salvarConfiguracao:(k,v)=>executar('INSERT OR REPLACE INTO configuracoes (chave,valor) VALUES (?,?)',[k,v])}}
+function integro(Database,bytes){
+  if(!temCabecalho(bytes))return false;
+  let verificacao;
+  try{
+    verificacao=new Database(bytes);
+    const linhas=verificacao.exec('PRAGMA integrity_check')[0]?.values;
+    return linhas?.length===1&&linhas[0][0]==='ok';
+  }catch{return false;}finally{verificacao?.close();}
+}
+
+async function gravarVerificando(arquivos,caminho,bytes){
+  await arquivos.writeBinaryFile(caminho,bytes);
+  const gravado=normalizarBytes(await arquivos.readBinaryFile(caminho));
+  if(!gravado||!mesmosBytes(bytes,gravado))throw new Error('A gravação do SQLite não foi confirmada no disco.');
+  return gravado;
+}
+
+async function recuperarBanco(arquivos,caminho,Database){
+  let encontrouCopia=false;
+  for(const sufixo of ['.tmp','.old','.bak']){
+    const bytes=await lerBancoSeExiste(arquivos,caminho+sufixo);
+    if(!bytes)continue;
+    encontrouCopia=true;
+    if(!integro(Database,bytes))continue;
+    const recuperacao=caminho+'.recuperacao';
+    await gravarVerificando(arquivos,recuperacao,bytes);
+    await arquivos.move(recuperacao,caminho);
+    const confirmado=await lerBancoSeExiste(arquivos,caminho);
+    if(!confirmado||!mesmosBytes(bytes,confirmado))throw new Error('A recuperação do SQLite não foi confirmada.');
+    return confirmado;
+  }
+  if(encontrouCopia)throw new Error('Nenhuma cópia SQLite válida para recuperação. Os arquivos foram preservados.');
+  return null;
+}
+
+async function salvarComSeguranca(caminho,bytes,Database,ultimoConfirmado){
+  const arquivos=window.Neutralino?.filesystem,esperado=normalizarBytes(bytes);
+  if(!arquivos)throw new Error('A API de arquivos do Windows não está disponível.');
+  if(!temCabecalho(esperado))throw new Error('O SQLite não gerou dados válidos para gravação.');
+  const anterior=await lerBancoSeExiste(arquivos,caminho);
+  if(anterior&&mesmosBytes(anterior,esperado))return anterior;
+  if(!mesmoBanco(anterior,ultimoConfirmado))throw conflitoBanco();
+  const temporario=caminho+'.tmp';
+  const gravado=await gravarVerificando(arquivos,temporario,esperado);
+  if(!integro(Database,gravado))throw new Error('O banco temporário não passou na verificação de integridade.');
+  if(anterior){
+    if(!integro(Database,anterior))throw new Error('O banco anterior está inválido. Os arquivos foram preservados.');
+    await gravarVerificando(arquivos,caminho+'.bak',anterior);
+  }
+  const pronto=await lerBancoSeExiste(arquivos,temporario);
+  if(!pronto||!mesmosBytes(pronto,esperado)||!mesmoBanco(await lerBancoSeExiste(arquivos,caminho),anterior))throw conflitoBanco();
+  await arquivos.move(temporario,caminho);
+  const confirmado=await lerBancoSeExiste(arquivos,caminho);
+  if(!confirmado||!mesmosBytes(esperado,confirmado))throw new Error('A troca do SQLite não foi confirmada no disco.');
+  return confirmado;
+}
+function adaptador(sql,modo,caminho='',estado={}){
+  let fila=Promise.resolve(),ultimoConfirmado=estado.inicial||null;
+  const Database=sql.constructor;
+  async function recarregar(estrito=false){
+    let bytes;
+    try{bytes=await lerBancoSeExiste(window.Neutralino.filesystem,caminho);}catch(erro){if(estrito)throw erro;}
+    if(estrito&&!integro(Database,bytes))throw new Error('O banco restaurado não pôde ser recarregado.');
+    bytes=integro(Database,bytes)?bytes:ultimoConfirmado;
+    if(!bytes)return;
+    const novo=new Database(bytes);
+    sql.close();sql=novo;
+    ultimoConfirmado=bytes;
+    estado.aoRecarregar?.(novo);
+  }
+  const persistir=()=>{
+    if(modo!=='sqlite'||estado.transacaoAtiva)return Promise.resolve();
+    fila=fila.catch(()=>{}).then(async()=>{
+      if(estado.transacaoAtiva)throw new Error('Persistência solicitada durante uma transação SQLite.');
+      const bytes=sql.export();
+      for(let i=0;i<3;i++){
+        try{
+          ultimoConfirmado=await salvarComSeguranca(caminho,bytes,Database,ultimoConfirmado);
+          return;
+        }catch(erro){
+          if(i===2||erro.code==='CELC_BANCO_ALTERADO'){await recarregar();throw erro;}
+          await new Promise(resolve=>setTimeout(resolve,50*(i+1)));
+        }
+      }
+    });
+    return fila;
+  };
+  const executar=(q,p=[])=>{sql.run(q,p);persistir().catch(()=>{});return Promise.resolve();};
+  const linhas=(q,p=[])=>{const r=sql.exec(q,p);return r[0]?r[0].values.map(v=>Object.fromEntries(r[0].columns.map((c,i)=>[c,v[i]]))):[]};const banco={modo,caminho,proximoId:(p='id')=>`${p}-${crypto.randomUUID()}`,executar,linhas,aguardarPersistencia:()=>fila,recarregarPersistencia:()=>recarregar(true),listarLancamentos:()=>linhas('SELECT * FROM lancamentos ORDER BY competencia DESC, criado_em DESC').map(x=>({id:x.id,descricao:x.descricao,tipo:x.tipo,categoriaId:x.categoria_id,categoria:x.categoria,valorCentavos:x.valor_centavos,competencia:x.competencia,vencimento:x.vencimento,liquidadoEm:x.liquidado_em,situacao:x.situacao,recorrencia:x.recorrencia,criadoEm:x.criado_em,atualizadoEm:x.atualizado_em,usuarioId:x.usuario_id})),listarCategorias:(ativas=true)=>linhas(`SELECT * FROM categorias ${ativas?'WHERE ativa=1':''} ORDER BY tipo,nome`).map(x=>({id:x.id,nome:x.nome,tipo:x.tipo,ativa:Boolean(x.ativa)})),listarCaixaDiario:()=>linhas('SELECT * FROM caixa_diario ORDER BY data DESC, criado_em DESC').map(x=>({id:x.id,data:x.data,competencia:x.competencia||'',tipo:x.tipo||'entrada',origem:x.origem,aluno:x.aluno,responsavel:x.responsavel,formaPagamento:x.forma_pagamento,valorCentavos:x.valor_centavos,observacao:x.observacao,lancamentoId:x.lancamento_id,devedorId:x.devedor_id||'',criadoEm:x.criado_em,usuarioId:x.usuario_id})),listarDevedores:()=>linhas('SELECT * FROM alunos_devedores ORDER BY situacao, vencimento ASC, criado_em DESC').map(x=>({id:x.id,aluno:x.aluno,turma:x.turma,responsavel:x.responsavel,contato:x.contato,descricao:x.descricao,valorCentavos:x.valor_centavos,valorPagoCentavos:x.valor_pago_centavos||0,vencimento:x.vencimento,situacao:x.situacao,observacao:x.observacao,criadoEm:x.criado_em,atualizadoEm:x.atualizado_em,usuarioId:x.usuario_id})),obterCredencial:()=>linhas('SELECT usuario,sal,hash,iteracoes FROM acesso WHERE id=1')[0]||null,salvarCredencial:x=>banco.executar('INSERT OR REPLACE INTO acesso (id,usuario,sal,hash,iteracoes) VALUES (1,?,?,?,?)',[x.usuario,x.sal,x.hash,x.iteracoes]),obterConfiguracao:k=>linhas('SELECT valor FROM configuracoes WHERE chave=?',[k])[0]?.valor||'',salvarConfiguracao:(k,v)=>banco.executar('INSERT OR REPLACE INTO configuracoes (chave,valor) VALUES (?,?)',[k,v])};return banco;
+}
 function preparar(sql){
   const bancoNovo=!sql.exec("SELECT name FROM sqlite_master WHERE type='table' AND name='categorias'")[0];
   sql.run(SCHEMA);
@@ -38,6 +130,7 @@ function preparar(sql){
   if(!cols.includes('liquidado_em'))sql.run('ALTER TABLE lancamentos ADD COLUMN liquidado_em TEXT');
   if(!caixaCols.includes('competencia'))sql.run("ALTER TABLE caixa_diario ADD COLUMN competencia TEXT NOT NULL DEFAULT ''");
   if(!caixaCols.includes('tipo'))sql.run("ALTER TABLE caixa_diario ADD COLUMN tipo TEXT NOT NULL DEFAULT 'entrada'");
+  if(!caixaCols.includes('devedor_id'))sql.run('ALTER TABLE caixa_diario ADD COLUMN devedor_id TEXT');
   if(!devedorCols.includes('valor_pago_centavos'))sql.run('ALTER TABLE alunos_devedores ADD COLUMN valor_pago_centavos INTEGER NOT NULL DEFAULT 0');
   if(bancoNovo)PADRAO.forEach(([id,nome,tipo])=>sql.run('INSERT INTO categorias VALUES (?,?,?,?,?)',[id,nome,tipo,1,agora()]));
 }
@@ -56,29 +149,31 @@ export async function abrirBancoSeguro(){
     const carregarSql=window.initSqlJs;
     if(typeof carregarSql!=='function') throw new Error('O mecanismo SQLite não foi carregado.');
     const SQL=await carregarSql({locateFile:arquivo=>`js/vendor/${arquivo}`});
-    let bytes;
-    try{bytes=await Neutralino.filesystem.readBinaryFile(caminho)}catch{bytes=null}
-    const bytesSql=normalizarBytes(bytes);
-    const sql=new SQL.Database(bytesSql||undefined);
+    const bytesSql=await lerBancoSeExiste(Neutralino.filesystem,caminho)??await recuperarBanco(Neutralino.filesystem,caminho,SQL.Database);
+    if(bytesSql&&!temCabecalho(bytesSql))throw new Error('Cabeçalho SQLite inválido. O arquivo não foi alterado.');
+    let sql=new SQL.Database(bytesSql||undefined);
     preparar(sql);
-    const banco=adaptador(sql,'sqlite',caminho);
+    const estado={inicial:bytesSql,aoRecarregar:novo=>{sql=novo;},transacaoAtiva:false};
+    const banco=adaptador(sql,'sqlite',caminho,estado);
     const executar=banco.executar;
     banco.executar=async(...args)=>{await executar(...args);await banco.aguardarPersistencia();};
     banco.emTransacao=async tarefa=>{
-      await banco.aguardarPersistencia();
+      await banco.aguardarPersistencia().catch(()=>{});
       const executarPersistente=banco.executar;
-      banco.executar=async(q,p=[])=>{sql.run(q,p);};
       sql.run('BEGIN IMMEDIATE');
+      estado.transacaoAtiva=true;
+      banco.executar=async(q,p=[])=>{sql.run(q,p);};
       try{
         const resultado=await tarefa();
         if(resultado?.ok===false){sql.run('ROLLBACK');return resultado;}
         sql.run('COMMIT');
+        estado.transacaoAtiva=false;
         await executarPersistente('SELECT 1');
         return resultado;
       }catch(erro){
         try{sql.run('ROLLBACK');}catch{}
         throw erro;
-      }finally{banco.executar=executarPersistente;}
+      }finally{estado.transacaoAtiva=false;banco.executar=executarPersistente;}
     };
     await banco.executar("UPDATE lancamentos SET categoria=COALESCE(NULLIF(categoria,''),'Sem categoria')");
     const confirmado=await Neutralino.filesystem.readBinaryFile(caminho);
