@@ -1,6 +1,14 @@
 # Estado do projeto — CELC Financeiro
 
-**Versão atual:** `0.2.29`
+**Versão atual:** `0.2.30`
+
+## Fechamento mensal e anual — 0.2.30
+
+- Dashboard por data efetiva: saldo trazido, entradas, saídas, resultado e saldo final. Histórico mensal e anual mantém o saldo acumulado entre períodos.
+- Pagamentos de despesas de competências anteriores aparecem separados, sem duplicar a saída; pagamentos parciais entram na data de cada parcela.
+- Projeção identifica valores registrados a pagar e a receber. A comparação usa o movimento efetivamente registrado, sem estimar mensalidades não cadastradas.
+- Dinheiro em espécie esperado depende de contagem de fechamento informada pelo usuário. Movimentos em espécie são exibidos separadamente; nenhuma contagem é presumida.
+- A versão não migra nem reclassifica lançamentos. A contagem só é gravada quando o usuário a confirma.
 **Estado de validação:** release v0.2.28 publicada e hashes locais conferem com o GitHub; suíte, sintaxe, UTF-8 e Graphify aprovados. A preservação do banco durante atualização online em instalação com dados reais continua `INCONCLUSIVA` nesta auditoria porque não havia banco local autorizado para clonar.
 
 ## Hash obrigatório no atualizador — 0.2.29 (2026-11-06)

@@ -1,0 +1,64 @@
+import {fluxoRealizado} from './pagamentos.js';
+
+const chaveContagem='contagem_caixa_especie';
+const dataValida=data=>typeof data==='string'&&/^\d{4}-\d{2}-\d{2}$/.test(data)&&Number.isFinite(Date.parse(data))&&new Date(data).toISOString().slice(0,10)===data;
+const totais=()=>({entradas:0,saidas:0,anteriores:0});
+const adicionar=(t,m)=>{t[m.tipo==='entrada'?'entradas':'saidas']+=m.valorCentavos;if(m.tipo==='despesa'&&m.competencia.slice(0,7)<m.data.slice(0,7))t.anteriores+=m.valorCentavos;};
+const resultado=t=>t.entradas-t.saidas;
+
+function contagem(db){
+  try{return JSON.parse(db.obterConfiguracao?.(chaveContagem)||'null');}catch{return null;}
+}
+
+export async function salvarContagemEspecie(db,{data,valorCentavos},hoje=new Date().toISOString().slice(0,10)){
+  if(!dataValida(data)||data>=hoje)return {ok:false,erro:'Informe a data de fechamento de um dia anterior.'};
+  if(!Number.isSafeInteger(valorCentavos)||valorCentavos<0)return {ok:false,erro:'Informe o valor contado em dinheiro, inclusive zero.'};
+  await db.salvarConfiguracao(chaveContagem,JSON.stringify({data,valorCentavos}));
+  return {ok:true};
+}
+
+function caixaEspecie(db,caixa,inicio,ate){
+  const base=contagem(db),esp=caixa.filter(x=>String(x.formaPagamento||'').trim().toLowerCase()==='dinheiro'&&dataValida(x.data)&&x.data<=ate);
+  const saldo=itens=>itens.reduce((s,x)=>s+(x.tipo==='entrada'?1:-1)*x.valorCentavos,0);
+  return {base,liquidoMes:saldo(esp.filter(x=>x.data>=inicio)),esperado:base&&base.data<=ate?base.valorCentavos+saldo(esp.filter(x=>x.data>base.data)):null};
+}
+
+export function resumirDashboard(db,{referencia,hoje=new Date().toISOString().slice(0,10)}){
+  const mes=referencia.slice(0,7),inicio=mes+'-01',fim=mes+'-31',ate=fim<hoje?fim:hoje;
+  const lancamentos=db.listarLancamentos(),caixa=db.listarCaixaDiario?.()||[];
+  const recebimentos=new Map(caixa.filter(x=>x.tipo==='entrada'&&x.lancamentoId&&dataValida(x.data)).map(x=>[x.lancamentoId,x.data]));
+  const fluxo=fluxoRealizado({listarLancamentos:()=>lancamentos,listarCaixaDiario:()=>caixa})
+    .map(x=>x.tipo==='entrada'&&recebimentos.has(x.id)?{...x,data:recebimentos.get(x.id)}:x)
+    .filter(x=>dataValida(x.data)&&x.data<=ate);
+  const meses=new Map([[mes,totais()]]),anos=new Map([[mes.slice(0,4),totais()]]),pagos=new Map(),categorias=new Map(),despesasAnteriores=[];
+  let saldoInicial=0;
+  for(const m of fluxo){
+    const chave=m.data.slice(0,7),ano=chave.slice(0,4);
+    if(!meses.has(chave))meses.set(chave,totais());
+    if(!anos.has(ano))anos.set(ano,totais());
+    adicionar(meses.get(chave),m);adicionar(anos.get(ano),m);
+    pagos.set(m.id,(pagos.get(m.id)||0)+m.valorCentavos);
+    if(m.data<inicio)saldoInicial+=(m.tipo==='entrada'?1:-1)*m.valorCentavos;
+    if(chave===mes&&m.tipo==='despesa'){
+      categorias.set(m.categoria,(categorias.get(m.categoria)||0)+m.valorCentavos);
+      if(m.competencia.slice(0,7)<mes)despesasAnteriores.push(m);
+    }
+  }
+  const atual=meses.get(mes),saldoFinal=saldoInicial+resultado(atual);
+  let aPagar=0,aReceber=0,aPagarAnterior=0,aReceberAnterior=0;
+  for(const l of lancamentos.filter(x=>x.competencia<=fim)){
+    const saldo=Math.max(0,l.valorCentavos-(pagos.get(l.id)||0));
+    if(l.tipo==='entrada'){
+      aReceber+=saldo;
+      if(l.competencia<inicio)aReceberAnterior+=saldo;
+    }else{
+      aPagar+=saldo;
+      if(l.competencia<inicio)aPagarAnterior+=saldo;
+    }
+  }
+  const historico=map=>{let saldo=0;return [...map].sort(([a],[b])=>a.localeCompare(b)).map(([periodo,t])=>{
+    const inicial=saldo,variacao=resultado(t);saldo+=variacao;
+    return {periodo,...t,saldoInicial:inicial,resultado:variacao,saldoFinal:saldo};
+  }).reverse();};
+  return {mes,...atual,saldoInicial,saldoFinal,resultado:resultado(atual),aPagar,aReceber,aPagarAnterior,aReceberAnterior,projecao:saldoFinal+aReceber-aPagar,meses:historico(meses),anos:historico(anos),categorias:[...categorias].sort((a,b)=>b[1]-a[1]),despesasAnteriores:despesasAnteriores.sort((a,b)=>b.data.localeCompare(a.data)),especie:caixaEspecie(db,caixa,inicio,ate)};
+}

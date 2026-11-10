@@ -4,22 +4,22 @@ SetCompressor /SOLID zlib
 ManifestDPIAware true
 
 !define APP_NAME "CELC Financeiro"
-!define APP_VERSION "0.2.29"
+!define APP_VERSION "0.2.30"
 !define APP_PUBLISHER "ML Lopes Design"
 !define APP_EXE "CELC Financeiro.exe"
 !define APP_REGKEY "Software\\ML Lopes Design\\CELC Financeiro"
 !define UNINSTALL_KEY "Software\\Microsoft\\Windows\\CurrentVersion\\Uninstall\\CELC Financeiro"
 
 Name "${APP_NAME} ${APP_VERSION}"
-OutFile "..\\Release\\CELC-Financeiro-Setup-0.2.29.exe"
-VIProductVersion "0.2.29.0"
+OutFile "..\\Release\\CELC-Financeiro-Setup-0.2.30.exe"
+VIProductVersion "0.2.30.0"
 VIAddVersionKey "ProductName" "CELC Financeiro"
-VIAddVersionKey "ProductVersion" "0.2.29"
+VIAddVersionKey "ProductVersion" "0.2.30"
 VIAddVersionKey "CompanyName" "ML Lopes Design"
 VIAddVersionKey "LegalCopyright" "© 2026 ML Lopes Design"
 VIAddVersionKey "FileDescription" "Instalador do CELC Financeiro"
-VIAddVersionKey "FileVersion" "0.2.29"
-VIAddVersionKey "OriginalFilename" "CELC-Financeiro-Setup-0.2.29.exe"
+VIAddVersionKey "FileVersion" "0.2.30"
+VIAddVersionKey "OriginalFilename" "CELC-Financeiro-Setup-0.2.30.exe"
 Icon "..\assets\celc-app-icon.ico"
 UninstallIcon "..\assets\celc-app-icon.ico"
 InstallDir "$LOCALAPPDATA\\Programs\\CELC Financeiro"
@@ -69,7 +69,11 @@ Section "CELC Financeiro" SEC_APP
   File "..\\dist\\CELC Financeiro\\resources.neu"
   File /oname=celc-app-icon.ico "..\\assets\\celc-app-icon.ico"
   ${If} $ValidacaoIsolada == "1"
-    RMDir /r "$INSTDIR"
+    SetOutPath "$TEMP"
+    Delete "$INSTDIR\${APP_EXE}"
+    Delete "$INSTDIR\resources.neu"
+    Delete "$INSTDIR\celc-app-icon.ico"
+    RMDir "$INSTDIR"
     Goto fim_instalacao
   ${EndIf}
   InitPluginsDir

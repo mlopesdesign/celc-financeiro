@@ -11,6 +11,7 @@
 - `src/js/backend/core/atualizador.js`
 - `src/js/backend/core/backup.js`
 - `src/js/backend/core/categorias.js`
+- `src/js/backend/core/dashboard.js`
 - `src/js/backend/core/escolar.js`
 - `src/js/backend/core/lancamentos.js`
 - `src/js/backend/core/pagamentos.js`
@@ -25,7 +26,8 @@
 
 | Canal | Origem |
 |---|---|
-| `painel:resumo` | src/js/app.js |
+| `painel:fluxo` | src/js/app.js |
+| `lancamentos:listar` | src/js/app.js |
 | `relatorios:resumo` | src/js/app.js |
 | `relatorios:resumo` | src/js/app.js |
 | `painel:historicoCategoria` | src/js/app.js |
@@ -42,6 +44,7 @@
 | `categorias:listar` | src/js/app.js |
 | `lancamentos:sugerirDescricoes` | src/js/app.js |
 | `lancamentos:listar` | src/js/app.js |
+| `caixa:salvarContagem` | src/js/app.js |
 | `lancamentos:baixar` | src/js/app.js |
 | `lancamentos:excluir` | src/js/app.js |
 | `relatorios:exportar` | src/js/app.js |
@@ -64,6 +67,8 @@
 | `backup:criar` | src/js/app.js |
 | `lancamentos:recorrencias` | src/js/app.js |
 | `lancamentos:atualizarVencidos` | src/js/app.js |
+| `painel:fluxo` | src/js/backend/servidor.js |
+| `caixa:salvarContagem` | src/js/backend/servidor.js |
 | `despesas:salvar` | src/js/backend/servidor.js |
 | `despesas:pagar` | src/js/backend/servidor.js |
 | `painel:historicoCategoria` | src/js/backend/servidor.js |

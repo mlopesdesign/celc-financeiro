@@ -5,6 +5,7 @@ import {detalharCategoria,exportarRelatorio,exportarRelatorioPdf,resumirRelatori
 import {registrarCaixaDiario,listarCaixaDiario,resumirCaixaDiario,pagarDespesaNoCaixa,excluirCaixaDiario,registrarDevedor,listarDevedores,baixarDevedor} from './core/escolar.js';
 import {trocarSenha} from '../auth.js';
 import {registrarPagamentoDespesa,historicoMensalCategoria,saldoDoLancamento} from './core/pagamentos.js';
+import {resumirDashboard,salvarContagemEspecie} from './core/dashboard.js';
 
 export function criarApiFinanceira(opcoes){
   const {banco,usuario=()=>({id:'direcao-celc'})}=opcoes,apiOriginal=criarApi(opcoes);
@@ -19,6 +20,8 @@ export function criarApiFinanceira(opcoes){
     return {ok:true,id};
   };
   const novas={
+    'painel:fluxo':d=>resumirDashboard(banco,d),
+    'caixa:salvarContagem':d=>salvarContagemEspecie(banco,d),
     'despesas:salvar':salvarDespesa,
     'despesas:pagar':d=>registrarPagamentoDespesa(banco,d,usuario()),
     'painel:historicoCategoria':d=>historicoMensalCategoria(banco,d),
@@ -28,7 +31,7 @@ export function criarApiFinanceira(opcoes){
   return (assunto,dados={})=>{
     const tarefa=()=>{
       const executar=()=>novas[assunto]?novas[assunto](dados):apiOriginal(assunto,dados);
-      const escrita=/(?:criar|editar|excluir|baixar|registrar|pagar|salvar|recorrencias|atualizarVencidos|arquivar|trocarSenha)$/.test(assunto);
+      const escrita=/(?:criar|editar|excluir|baixar|registrar|pagar|salvar|salvarContagem|recorrencias|atualizarVencidos|arquivar|trocarSenha)$/.test(assunto);
       return escrita&&banco.emTransacao?banco.emTransacao(executar):executar();
     };
     const resultado=fila.then(tarefa);fila=resultado.catch(()=>{});return resultado;

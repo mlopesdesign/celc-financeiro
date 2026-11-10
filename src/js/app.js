@@ -4,7 +4,7 @@ import {criarApiFinanceira as criarApi} from './backend/servidor.js';
 import {valorRealizado,saldoDoLancamento,pagamentosDaDespesa} from './backend/core/pagamentos.js';
 import {verificarAtualizacao,instalarAtualizacao} from './backend/atualizador.js';
 
-const APP_VERSION='0.2.29';
+const APP_VERSION='0.2.30';
 const hoje=new Date().toISOString().slice(0,10);
 const $=seletor=>document.querySelector(seletor);
 const $$=seletor=>Array.from(document.querySelectorAll(seletor));
@@ -14,7 +14,7 @@ const liquidado=item=>item.tipo==='entrada'?item.situacao==='recebido':item.situ
 
 let banco;
 let api;
-let tela='dashboard',ultimoResumoDashboard=null;
+let tela='dashboard';
 let edicao=null;
 let categoriaEmEdicao=null;
 let relatorioAba='geral';
@@ -66,24 +66,47 @@ function tabela(itens,{acao=true}={}){
 }
 
 async function dashboard(){
-  const resumo=await api('painel:resumo',{referencia:`${mesDashboard}-01`});
-  ultimoResumoDashboard=resumo;
-  const pendentes=resumo.recentes.filter(item=>!liquidado(item));
-  const porCategoria=resumo.doMes.filter(item=>item.tipo==='despesa').reduce((total,item)=>{
-    total[item.categoria]=(total[item.categoria]||0)+valorRealizado(banco,item);
-    return total;
-  },{});
-  const comparativo=await comparativoDashboard();
-  return `<div class="toolbar"><label>Mês de referência<input type="month" id="mesDashboard" value="${mesDashboard}"></label></div><section class="summary-grid"><article class="summary-card"><div><p>Saldo disponível</p><h2>${brl(resumo.saldoDisponivel)}</h2><span class="neutral">Somente valores realizados</span></div></article><article class="summary-card"><div><p>Entradas realizadas</p><h2>${brl(resumo.entradas)}</h2><span class="positive">Na competência selecionada</span></div></article><article class="summary-card"><div><p>Despesas realizadas</p><h2>${brl(resumo.despesas)}</h2><span class="negative">Na competência selecionada</span></div></article><article class="summary-card"><div><p>Projeção mensal</p><h2>${brl(resumo.projecao)}</h2><span class="neutral">Inclui pendências e previsões</span></div></article></section><section class="content-grid"><article class="panel"><div class="panel-heading"><div><h3>Resultado do mês</h3><p>Realizado: ${brl(resumo.resultado)} · Projetado: ${brl(resumo.previsto)}</p></div></div><div class="metric-strip"><span>Recebido <b>${brl(resumo.entradas)}</b></span><span>Pago <b>${brl(resumo.despesas)}</b></span><span>Pendente <b>${brl(pendentes.reduce((s,item)=>s+item.saldoCentavos,0))}</b></span></div></article><article class="panel"><div class="panel-heading"><div><h3>Despesas por categoria</h3><p>Valores pagos na competência selecionada</p></div></div><div class="category-list">${Object.entries(porCategoria).map(([nome,valor])=>`<button class="text-button category-history-button" data-historico-categoria="${esc(nome)}">${esc(nome)} <b>${brl(valor)}</b></button>`).join('')||'<span>Sem despesas no período.</span>'}</div></article></section>${comparativo}<section class="panel"><div class="panel-heading"><div><h3>Últimas movimentações</h3><p>${pendentes.length} pendência(s) aguardando baixa</p></div></div>${tabela(resumo.recentes.slice(0,8))}</section>`;
+  const r=await api('painel:fluxo',{referencia:mesDashboard,hoje});
+  const recentes=(await api('lancamentos:listar')).slice(0,8);
+  const sinal=v=>v<0?'out':v>0?'in':'';
+  const card=(titulo,valor,nota)=>`<article class="summary-card"><div><p>${titulo}</p><h2 class="${sinal(valor)}">${brl(valor)}</h2><span class="neutral">${nota}</span></div></article>`;
+  const e=r.especie;
+  const historico=(titulo,linhas)=>`<section class="panel dashboard-section"><h3>${titulo}</h3><div class="table-wrap"><table><thead><tr><th>Período</th><th>Saldo trazido</th><th>Entrou</th><th>Saiu</th><th>Resultado</th><th>Saldo final</th></tr></thead><tbody>${linhas.map(x=>`<tr><td>${x.periodo.split('-').reverse().join('/')}</td><td class="${sinal(x.saldoInicial)}">${brl(x.saldoInicial)}</td><td>${brl(x.entradas)}</td><td>${brl(x.saidas)}</td><td class="${sinal(x.resultado)}">${brl(x.resultado)}</td><td class="${sinal(x.saldoFinal)}">${brl(x.saldoFinal)}</td></tr>`).join('')}</tbody></table></div></section>`;
+  return `<div class="toolbar"><label>Mês de referência <input type="month" id="mesDashboard" value="${mesDashboard}"></label></div>
+    <section class="summary-grid">
+      ${card('Saldo trazido',r.saldoInicial,'Acumulado antes deste mês')}
+      ${card('Entradas do mês',r.entradas,'Pela data do recebimento')}
+      ${card('Saídas do mês',r.saidas,'Pela data do pagamento')}
+      ${card('Saldo final realizado',r.saldoFinal,'Saldo trazido + entradas − saídas')}
+    </section>
+    <section class="content-grid"><article class="panel"><h3>Resultado do mês e projeção</h3><div class="metric-strip">
+      <span>Resultado do mês <b class="${sinal(r.resultado)}">${brl(r.resultado)}</b></span>
+      <span>A receber registrado <b>${brl(r.aReceber)}</b></span><span>A pagar registrado <b>${brl(r.aPagar)}</b></span>
+      <span>Saldo projetado <b class="${sinal(r.projecao)}">${brl(r.projecao)}</b></span>
+    </div><div class="table-wrap"><table class="dashboard-origem"><thead><tr><th>Origem das pendências</th><th>A receber</th><th>A pagar</th></tr></thead><tbody>
+      <tr><td>Meses anteriores</td><td>${brl(r.aReceberAnterior)}</td><td>${brl(r.aPagarAnterior)}</td></tr>
+      <tr><td>Mês selecionado</td><td>${brl(r.aReceber-r.aReceberAnterior)}</td><td>${brl(r.aPagar-r.aPagarAnterior)}</td></tr>
+    </tbody></table></div></article><article class="panel"><h3>Dinheiro em espécie esperado</h3>
+      <div class="metric-strip"><span>Saldo esperado <b>${e.esperado===null?'Sem contagem de referência':brl(e.esperado)}</b></span><span>Movimentação líquida do mês <b>${brl(e.liquidoMes)}</b></span></div>
+      ${e.base?`<p class="subtitle">Contagem de fechamento: ${dataPt(e.base.data)} · ${brl(e.base.valorCentavos)}</p>`:''}
+      <details class="dashboard-contagem"><summary>${e.base?'Atualizar contagem':'Registrar contagem'}</summary>
+      <form id="formContagemEspecie" class="stack"><label>Data do fechamento<input name="data" type="date" required></label><label>Dinheiro contado (R$)<input name="valor" type="number" min="0" step="0.01" required></label><button class="primary-action" type="submit">Salvar contagem</button></form></details>
+    </article></section>
+    <section class="panel dashboard-section"><h3>Despesas de meses anteriores pagas neste mês</h3><p class="subtitle">${brl(r.anteriores)} já incluídos nas saídas do mês.</p>
+      ${r.despesasAnteriores.length?`<div class="table-wrap"><table><thead><tr><th>Despesa</th><th>Categoria</th><th>Competência</th><th>Data do pagamento</th><th>Valor pago</th></tr></thead><tbody>${r.despesasAnteriores.map(x=>`<tr><td>${esc(x.descricao)}</td><td>${esc(x.categoria)}</td><td>${dataPt(x.competencia)}</td><td>${dataPt(x.data)}</td><td class="amount out">${brl(x.valorCentavos)}</td></tr>`).join('')}</tbody></table></div>`:'<p class="subtitle">Nenhum pagamento de competência anterior neste mês.</p>'}</section>
+    ${historico('Histórico mensal',r.meses)}
+    ${historico('Histórico anual',r.anos)}
+    <section class="panel dashboard-section"><h3>Despesas pagas por categoria</h3><div class="category-list">${r.categorias.map(([nome,valor])=>`<button class="text-button category-history-button" data-historico-categoria="${esc(nome)}">${esc(nome)} <b>${brl(valor)}</b></button>`).join('')||'<span>Sem despesas pagas no período.</span>'}</div></section>
+    ${await comparativoDashboard()}
+    <section class="panel dashboard-section"><h3>Últimos lançamentos cadastrados</h3>${tabela(recentes)}</section>`;
 }
 
 function periodoMensal(mes){const [ano,numero]=mes.split('-').map(Number);return {inicio:`${mes}-01`,fim:`${mes}-${String(new Date(ano,numero,0).getDate()).padStart(2,'0')}`};}
 async function comparativoDashboard(){
   const [ano,numero]=mesDashboard.split('-').map(Number),anterior=new Date(ano,numero-2,1,12),mesAnterior=`${anterior.getFullYear()}-${String(anterior.getMonth()+1).padStart(2,'0')}`;
   const atual=await api('relatorios:resumo',periodoMensal(mesDashboard)),passado=await api('relatorios:resumo',periodoMensal(mesAnterior));
-  const linha=(mes,r)=>`<tr><td>${esc(mes.split('-').reverse().join('/'))}</td><td class="amount in">${brl(r.totais.entradasRealizadas)}</td><td class="amount out">${brl(r.totais.despesasRealizadas)}</td><td>${brl(r.totais.resultadoRealizado)}</td><td>${brl(r.totais.aReceber)}</td><td>${brl(r.totais.aPagar)}</td></tr>`;
   const baseReceitas=Math.round((atual.totais.entradasProjetadas+passado.totais.entradasProjetadas)/2),baseDespesas=Math.round((atual.totais.despesasProjetadas+passado.totais.despesasProjetadas)/2);
-  return `<section class="panel"><h3>Comparativo mensal</h3><div class="table-wrap"><table><thead><tr><th>Competência</th><th>Recebido</th><th>Pago</th><th>Saldo realizado</th><th>A receber</th><th>A pagar</th></tr></thead><tbody>${linha(mesAnterior,passado)}${linha(mesDashboard,atual)}</tbody></table></div><h3>Base para provisão do próximo mês</h3><p class="subtitle">Média dos valores totais lançados nas duas competências, incluindo pendências. O mês em andamento pode estar incompleto.</p><div class="metric-strip"><span>Receitas <b>${brl(baseReceitas)}</b></span><span>Despesas <b>${brl(baseDespesas)}</b></span><span>Resultado de referência <b>${brl(baseReceitas-baseDespesas)}</b></span></div></section>`;
+  return `<section class="panel dashboard-section"><h3>Base para provisão do próximo mês</h3><p class="subtitle">Média dos valores totais lançados nas duas competências, incluindo pendências. O mês em andamento pode estar incompleto.</p><div class="metric-strip"><span>Receitas <b>${brl(baseReceitas)}</b></span><span>Despesas <b>${brl(baseDespesas)}</b></span><span>Resultado de referência <b>${brl(baseReceitas-baseDespesas)}</b></span></div></section>`;
 }
 
 async function abrirHistoricoCategoria(categoria){
@@ -190,7 +213,6 @@ async function render(){
   $('#subtitulo').textContent=meta.subtitulo;
   try{
     $('#conteudo').innerHTML=await meta.montar();
-    if(tela==='dashboard'&&ultimoResumoDashboard){const card=$('#conteudo .summary-card'),titulo=card?.querySelector('p'),valor=card?.querySelector('h2'),nota=card?.querySelector('span');if(titulo)titulo.textContent='Dinheiro em mãos';if(valor)valor.textContent=brl(ultimoResumoDashboard.dinheiroEmMaos);if(nota)nota.textContent=`Somente pagamentos em Dinheiro · Saldo realizado geral: ${brl(ultimoResumoDashboard.saldoDisponivel)}`;}
   }catch(erro){
     console.error(erro);
     $('#conteudo').innerHTML=`<section class="panel"><h3>Falha ao abrir esta página</h3><p class="subtitle">${esc(erro.message||erro)}</p></section>`;
@@ -321,6 +343,17 @@ async function filtrarTabela(){
 
 function ligarEventos(){
   $('#mesDashboard')&&($('#mesDashboard').onchange=e=>{if(/^\d{4}-\d{2}$/.test(e.target.value)){mesDashboard=e.target.value;render();}});
+  $('#formContagemEspecie')?.addEventListener('submit',async evento=>{
+    evento.preventDefault();
+    const form=evento.currentTarget,dados=new FormData(form),botao=form.querySelector('button');
+    botao.disabled=true;
+    try{
+      const r=await api('caixa:salvarContagem',{data:dados.get('data'),valorCentavos:Math.round(Number(dados.get('valor'))*100)});
+      if(!r.ok){aviso(r.erro,true);return;}
+      aviso('Contagem salva.');await render();
+    }catch(erro){aviso(erro.message||'Não foi possível salvar a contagem.',true);}
+    finally{botao.disabled=false;}
+  });
   $$('[data-historico-categoria]').forEach(botao=>botao.onclick=()=>abrirHistoricoCategoria(botao.dataset.historicoCategoria));
   $$('[data-baixar]').forEach(botao=>botao.onclick=async()=>{
     const item=banco.listarLancamentos().find(x=>x.id===botao.dataset.baixar);

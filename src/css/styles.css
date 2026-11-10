@@ -27,3 +27,11 @@ main{padding:42px 56px 56px;max-width:1560px}header{margin-bottom:34px}.content-
 .payment-history{padding:12px 0;border-bottom:1px solid #dce3eb;}
 #pagamentosDespesa{margin:18px 0;}
 @media(max-width:760px){.payment-row{grid-template-columns:1fr 1fr;}.category-history-modal{padding:20px;}}
+.dashboard-section{margin-bottom:24px}
+.dashboard-origem{min-width:0}
+.dashboard-origem td,.dashboard-origem th{white-space:normal}
+.dashboard-contagem{margin-top:18px}
+.dashboard-contagem summary{cursor:pointer;color:var(--blue);font-weight:600}
+.dashboard-contagem form{margin-top:14px}
+.metric-strip b.out,.summary-card h2.out{color:#a6323a}
+.metric-strip b.in,.summary-card h2.in{color:#18734d}
