@@ -28,6 +28,9 @@ main{padding:42px 56px 56px;max-width:1560px}header{margin-bottom:34px}.content-
 #pagamentosDespesa{margin:18px 0;}
 @media(max-width:760px){.payment-row{grid-template-columns:1fr 1fr;}.category-history-modal{padding:20px;}}
 .dashboard-section{margin-bottom:24px}
+.report-filter form,.report-filter .toolbar-actions,.report-filter form>div:first-child{flex-wrap:wrap}
+.report-cards{grid-template-columns:repeat(2,minmax(0,1fr))}
+@media(max-width:1000px){.report-cards{grid-template-columns:minmax(0,1fr)}}
 .content-grid.dashboard-summary{grid-template-columns:minmax(0,1.45fr) minmax(0,1fr)}
 .dashboard-summary>.panel,.dashboard-section{min-width:0}
 @media(max-width:1150px){.content-grid.dashboard-summary{grid-template-columns:minmax(0,1fr)}}

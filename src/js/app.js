@@ -5,7 +5,7 @@ import {valorRealizado,saldoDoLancamento,pagamentosDaDespesa} from './backend/co
 import {favorecidoDaDespesa} from './backend/core/dashboard.js';
 import {verificarAtualizacao,instalarAtualizacao} from './backend/atualizador.js';
 
-const APP_VERSION='0.2.31';
+const APP_VERSION='0.2.32';
 const hoje=new Date().toISOString().slice(0,10);
 const $=seletor=>document.querySelector(seletor);
 const $$=seletor=>Array.from(document.querySelectorAll(seletor));
@@ -19,7 +19,7 @@ let tela='dashboard';
 let edicao=null;
 let categoriaEmEdicao=null;
 let relatorioAba='geral';
-let periodoRelatorio={inicio:`${hoje.slice(0,7)}-01`,fim:hoje};
+let periodoRelatorio=periodoMensal(hoje.slice(0,7));
 let fechamentoEmAndamento=false;
 let consultaDescricao=0;
 let mesDashboard=hoje.slice(0,7);
@@ -103,11 +103,15 @@ async function dashboard(){
     <section class="panel dashboard-section"><h3>Últimos lançamentos cadastrados</h3>${tabela(recentes)}</section>`;
 }
 
-function detalhesFinanceirosDashboard(r){
+function tabelaFluxoFinanceiro(itens){
+  return `<div class="table-wrap"><table><thead><tr><th>Data efetiva</th><th>Competência</th><th>Descrição</th><th>Categoria</th><th>Forma</th><th>Valor</th></tr></thead><tbody>${itens.map(x=>`<tr><td>${dataPt(x.data)}</td><td>${dataPt(x.competencia)}</td><td>${esc(x.descricao)}</td><td>${esc(x.categoria)}</td><td>${esc(x.formaPagamento)}</td><td class="amount ${x.tipo==='entrada'?'in':'out'}">${x.tipo==='entrada'?'+':'−'} ${brl(x.valorCentavos)}</td></tr>`).join('')||'<tr><td colspan="6">Nenhuma movimentação realizada neste período.</td></tr>'}</tbody></table></div>`;
+}
+
+function detalhesFinanceirosDashboard(r,{acao=true}={}){
   const linhas=itens=>`<ul class="dashboard-detalhes">${itens.map(x=>`<li>${dataPt(x.data)} · ${esc(x.descricao)} · ${x.tipo==='entrada'?'Entrada':'Saída'} · ${brl(x.valorCentavos)} · ${esc(x.formaPagamento)}</li>`).join('')}</ul>`;
   return `<section class="panel dashboard-section"><h3>A pagar por favorecido</h3><p class="subtitle">Saldo em aberto: <b>${brl(r.aPagar)}</b>. Inclui despesas sem pagamento e parcialmente pagas.</p>
-    ${r.pendencias.length?`<div class="table-wrap"><table><thead><tr><th>Favorecido / despesa</th><th>Competência</th><th>Integral</th><th>Em aberto na virada</th><th>Pago no mês</th><th>Total pago</th><th>Falta pagar</th><th>Ação</th></tr></thead><tbody>
-    ${r.pendencias.map(x=>`<tr><td><details><summary><b>${esc(x.favorecido||'Favorecido não informado')}</b></summary><p>${esc(x.descricao)}</p>${x.parcelas.length?linhas(x.parcelas):'<p>Nenhum pagamento registrado.</p>'}</details>${x.favorecido?'':`<small>${esc(x.descricao)}</small>`}</td><td>${dataPt(x.competencia)}</td><td>${brl(x.valorCentavos)}</td><td>${brl(x.trazido)}</td><td>${brl(x.pagoMes)}</td><td>${brl(x.pagoTotal)}</td><td class="amount out">${brl(x.saldo)}</td><td><button type="button" class="text-button" data-editar="${esc(x.id)}">${x.favorecido?'Abrir despesa':'Informar favorecido'}</button></td></tr>`).join('')}
+    ${r.pendencias.length?`<div class="table-wrap"><table><thead><tr><th>Favorecido / despesa</th><th>Competência</th><th>Integral</th><th>Em aberto na virada</th><th>Pago no mês</th><th>Total pago</th><th>Falta pagar</th>${acao?'<th>Ação</th>':''}</tr></thead><tbody>
+    ${r.pendencias.map(x=>`<tr><td><details><summary><b>${esc(x.favorecido||'Favorecido não informado')}</b></summary><p>${esc(x.descricao)}</p>${x.parcelas.length?linhas(x.parcelas):'<p>Nenhum pagamento registrado.</p>'}</details>${x.favorecido?'':`<small>${esc(x.descricao)}</small>`}</td><td>${dataPt(x.competencia)}</td><td>${brl(x.valorCentavos)}</td><td>${brl(x.trazido)}</td><td>${brl(x.pagoMes)}</td><td>${brl(x.pagoTotal)}</td><td class="amount out">${brl(x.saldo)}</td>${acao?`<td><button type="button" class="text-button" data-editar="${esc(x.id)}">${x.favorecido?'Abrir despesa':'Informar favorecido'}</button></td>`:''}</tr>`).join('')}
     </tbody></table></div>`:'<p class="subtitle">Nenhuma despesa em aberto ou trazida e quitada neste período.</p>'}</section>
     <section class="panel dashboard-section"><h3>Recebimentos por dia</h3><div class="table-wrap"><table><thead><tr><th>Data</th><th>Recebimentos sem discriminação</th><th>Total do dia</th></tr></thead><tbody>
     ${r.entradasPorDia.map(d=>`<tr><td><details><summary>${dataPt(d.data)}</summary>${linhas(d.itens)}</details></td><td>${brl(d.semDiscriminacao)}</td><td class="amount in">${brl(d.total)}</td></tr>`).join('')||'<tr><td colspan="3">Nenhum recebimento no período.</td></tr>'}
@@ -121,7 +125,7 @@ function periodoMensal(mes){const [ano,numero]=mes.split('-').map(Number);return
 async function comparativoDashboard(){
   const [ano,numero]=mesDashboard.split('-').map(Number),anterior=new Date(ano,numero-2,1,12),mesAnterior=`${anterior.getFullYear()}-${String(anterior.getMonth()+1).padStart(2,'0')}`;
   const atual=await api('relatorios:resumo',periodoMensal(mesDashboard)),passado=await api('relatorios:resumo',periodoMensal(mesAnterior));
-  const baseReceitas=Math.round((atual.totais.entradasProjetadas+passado.totais.entradasProjetadas)/2),baseDespesas=Math.round((atual.totais.despesasProjetadas+passado.totais.despesasProjetadas)/2);
+  const baseReceitas=Math.round((atual.competencia.entradas+passado.competencia.entradas)/2),baseDespesas=Math.round((atual.competencia.despesas+passado.competencia.despesas)/2);
   return `<section class="panel dashboard-section"><h3>Base para provisão do próximo mês</h3><p class="subtitle">Média dos valores totais lançados nas duas competências, incluindo pendências. O mês em andamento pode estar incompleto.</p><div class="metric-strip"><span>Receitas <b>${brl(baseReceitas)}</b></span><span>Despesas <b>${brl(baseDespesas)}</b></span><span>Resultado de referência <b>${brl(baseReceitas-baseDespesas)}</b></span></div></section>`;
 }
 
@@ -186,17 +190,20 @@ async function categorias(){
 
 async function relatorios(){
   const relatorio=await api('relatorios:resumo',periodoRelatorio),t=relatorio.totais;
-  const abas=[['geral','Visão geral'],['categorias','Por categoria'],['entradas','Entradas'],['despesas','Despesas'],['fluxo','Fluxo de caixa'],['inadimplencia','Inadimplência']];
+  const abas=[['geral','Visão geral'],['categorias','Por categoria'],['entradas','Entradas'],['despesas','Despesas'],['fluxo','Fluxo de caixa'],['conciliacao','Conferência'],['competencia','Competência'],['inadimplencia','Inadimplência']];
   const botaoAba=([id,nome])=>`<button class="report-tab ${relatorioAba===id?'active':''}" data-relatorio-aba="${id}">${nome}</button>`;
   const linhaCategoria=(item,tipo)=>`<article class="report-category"><div><b>${esc(item.categoria)}</b><span class="type-badge ${tipo}">${tipo}</span></div><div class="report-numbers"><span>Realizado <b>${brl(item.realizado)}</b></span><span>${tipo==='entrada'?'A receber':'A pagar'} <b>${brl(item.pendente)}</b></span><span>Projetado <b>${brl(item.projetado)}</b></span></div></article>`;
   const cartaoCategoria=(item,tipo)=>`<article class="category-total-card ${tipo}"><div><span class="type-badge ${tipo}">${tipo}</span><b>${esc(item.categoria)}</b></div><small>${tipo==='entrada'?'Arrecadado no período':'Gasto no período'}</small><strong>${brl(item.realizado)}</strong><p>${item.quantidade} lançamento${item.quantidade===1?'':'s'} no período</p><button class="text-button" type="button" data-detalhar-categoria="${esc(item.categoria)}" data-tipo-categoria="${tipo}">Detalhar</button></article>`;
-  const geral=`<section class="report-metrics"><article><span>Entradas realizadas</span><b class="in">${brl(t.entradasRealizadas)}</b><small>Valores efetivamente recebidos</small></article><article><span>Despesas realizadas</span><b class="out">${brl(t.despesasRealizadas)}</b><small>Valores efetivamente pagos</small></article><article><span>Resultado realizado</span><b>${brl(t.resultadoRealizado)}</b><small>Entradas menos despesas realizadas</small></article><article><span>Resultado projetado</span><b>${brl(t.resultadoProjetado)}</b><small>Inclui contas a receber e a pagar</small></article></section><section class="report-cards"><article class="panel"><h3>Compromissos do período</h3><div class="metric-strip report-strip"><span>A receber <b>${brl(t.aReceber)}</b></span><span>A pagar <b>${brl(t.aPagar)}</b></span></div><p class="subtitle">Valores pendentes não são somados ao realizado; aparecem somente na projeção.</p></article><article class="panel"><h3>Leitura financeira</h3><p class="subtitle">O resultado realizado mede caixa confirmado. O resultado projetado considera lançamentos ainda pendentes dentro do período selecionado.</p></article></section>`;
+  const geral=`<section class="report-metrics"><article><span>Entradas realizadas</span><b class="in">${brl(t.entradasRealizadas)}</b><small>Valores efetivamente recebidos</small></article><article><span>Despesas realizadas</span><b class="out">${brl(t.despesasRealizadas)}</b><small>Valores efetivamente pagos</small></article><article><span>Resultado realizado</span><b>${brl(t.resultadoRealizado)}</b><small>Entradas menos despesas realizadas</small></article><article><span>Saldo projetado</span><b>${brl(t.saldoProjetado)}</b><small>Saldo acumulado mais o saldo a receber, menos o saldo a pagar</small></article></section><section class="report-cards"><article class="panel"><h3>Compromissos em aberto até o fim do filtro</h3><div class="metric-strip report-strip"><span>A receber <b>${brl(t.aReceber)}</b></span><span>A pagar <b>${brl(t.aPagar)}</b></span></div><p class="subtitle">Valores pendentes não são somados ao realizado; aparecem somente na projeção.</p></article><article class="panel"><h3>Saldos dos lançamentos</h3><div class="metric-strip"><span>Saldo trazido <b>${brl(t.saldoInicial)}</b></span><span>Saldo acumulado <b>${brl(t.saldoFinal)}</b></span></div><p class="subtitle">Todas as formas de pagamento. O saldo acumulado não é dinheiro em espécie.</p></article></section>`;
   const categorias=`<section class="panel category-dashboard"><div class="panel-heading"><div><h3>Resultado por categoria</h3><p>O total é sempre o valor efetivamente arrecadado ou gasto no período selecionado.</p></div></div><h4>Receitas arrecadadas</h4><div class="category-total-grid">${relatorio.categoriasEntrada.map(item=>cartaoCategoria(item,'entrada')).join('')||'<p class="subtitle">Nenhuma categoria de entrada cadastrada.</p>'}</div><h4>Despesas realizadas</h4><div class="category-total-grid">${relatorio.categoriasDespesa.map(item=>cartaoCategoria(item,'despesa')).join('')||'<p class="subtitle">Nenhuma categoria de despesa cadastrada.</p>'}</div></section>`;
   const entradas=`<section class="panel report-list"><div class="panel-heading"><div><h3>Entradas por categoria</h3><p>Recebido, a receber e projeção por origem de receita.</p></div></div>${relatorio.categoriasEntrada.map(item=>linhaCategoria(item,'entrada')).join('')||'<p class="subtitle">Nenhuma entrada no período selecionado.</p>'}</section>`;
   const despesas=`<section class="panel report-list"><div class="panel-heading"><div><h3>Despesas por categoria</h3><p>Pago, a pagar e projeção por centro de custo.</p></div></div>${relatorio.categoriasDespesa.map(item=>linhaCategoria(item,'despesa')).join('')||'<p class="subtitle">Nenhuma despesa no período selecionado.</p>'}</section>`;
-  const fluxo=`<section class="panel"><div class="panel-heading"><div><h3>Fluxo de caixa realizado</h3><p>Movimentações em data de baixa: apenas recebido ou pago.</p></div></div>${tabela(relatorio.fluxo.map(item=>({id:item.data+item.descricao,descricao:item.descricao,categoria:item.categoria,competencia:item.data,vencimento:'',valorCentavos:item.valorCentavos,tipo:item.tipo,situacao:item.tipo==='entrada'?'recebido':'pago',recorrencia:'avulso'})),{acao:false})}</section>`;
+  const fluxo=`<section class="panel"><h3>Fluxo de caixa realizado</h3>${tabelaFluxoFinanceiro(relatorio.fluxo)}</section>`;
   const inadimplencia=`<section class="report-metrics"><article><span>Alunos em aberto</span><b>${relatorio.devedores.quantidade}</b><small>Pendências registradas</small></article><article><span>Valor em aberto</span><b class="out">${brl(relatorio.devedores.valor)}</b><small>Total pendente de alunos</small></article><article><span>Vencidos</span><b>${relatorio.devedores.vencidos}</b><small>Vencimento anterior a hoje</small></article><article><span>Valor vencido</span><b class="out">${brl(relatorio.devedores.valorVencido)}</b><small>Prioridade de cobrança</small></article></section><section class="panel"><div class="panel-heading"><div><h3>Relação de inadimplência</h3><p>Alunos em aberto, ordenados pelo vencimento.</p></div></div>${tabelaDevedores(relatorio.devedores.itens)}</section>`;
-  const conteudo={geral,categorias,entradas,despesas,fluxo,inadimplencia}[relatorioAba]||geral;
+  const conciliacao=detalhesFinanceirosDashboard(relatorio.financeiro,{acao:false});
+  const c=relatorio.competencia;
+  const competencia=`<section class="panel"><h3>Valores integrais por competência</h3><p class="subtitle">Pelo mês de referência da despesa ou receita. Inclui lançamentos ainda não liquidados.</p><div class="metric-strip"><span>Receitas lançadas <b>${brl(c.entradas)}</b></span><span>Despesas lançadas <b>${brl(c.despesas)}</b></span><span>Diferença <b>${brl(c.resultado)}</b></span></div>${tabela(c.itens,{acao:false})}</section>`;
+  const conteudo={geral,categorias,entradas,despesas,fluxo,conciliacao,competencia,inadimplencia}[relatorioAba]||geral;
   return `<section class="panel report-filter"><form id="filtroRelatorio"><div><label>De<input name="inicio" type="date" value="${relatorio.inicio}" required></label><label>Até<input name="fim" type="date" value="${relatorio.fim}" required></label></div><div class="toolbar-actions"><button class="outline-button" type="button" data-periodo-relatorio="mes">Mês atual</button><button class="outline-button" type="button" data-periodo-relatorio="ano">Ano atual</button><button class="outline-button" type="submit">Atualizar período</button><button class="outline-button" id="exportarPdf" type="button">Exportar PDF</button><button class="primary-action" id="exportar" type="button">Exportar CSV</button></div></form></section><nav class="report-tabs">${abas.map(botaoAba).join('')}</nav>${conteudo}`;
 }
 
@@ -212,7 +219,7 @@ async function abrirDetalhamentoCategoria(categoria,tipo){
     modal.onclick=evento=>{if(evento.target===modal)modal.classList.remove('show');};
   }
   const realizado=tipo==='entrada'?'Arrecadado':'Gasto';
-  modal.innerHTML=`<section class="modal category-detail-modal"><button type="button" class="close" id="fecharDetalhamentoCategoria">×</button><p class="eyebrow">RELATÓRIO POR CATEGORIA</p><h2>${esc(detalhe.categoria)}</h2><p class="subtitle">${dataPt(detalhe.inicio)} a ${dataPt(detalhe.fim)}</p><div class="metric-strip category-detail-totals"><span>${realizado}<b>${brl(detalhe.totais.realizado)}</b></span><span>${tipo==='entrada'?'A receber':'A pagar'}<b>${brl(detalhe.totais.pendente)}</b></span><span>Projetado<b>${brl(detalhe.totais.projetado)}</b></span></div><div class="category-detail-table">${tabela(detalhe.itens,{acao:false})}</div></section>`;
+  modal.innerHTML=`<section class="modal category-detail-modal"><button type="button" class="close" id="fecharDetalhamentoCategoria">×</button><p class="eyebrow">RELATÓRIO POR CATEGORIA</p><h2>${esc(detalhe.categoria)}</h2><p class="subtitle">${dataPt(detalhe.inicio)} a ${dataPt(detalhe.fim)}</p><div class="metric-strip category-detail-totals"><span>${realizado}<b>${brl(detalhe.totais.realizado)}</b></span><span>${tipo==='entrada'?'A receber':'A pagar'}<b>${brl(detalhe.totais.pendente)}</b></span><span>Projetado<b>${brl(detalhe.totais.projetado)}</b></span></div><div class="category-detail-table"><h3>Movimentos realizados</h3>${tabelaFluxoFinanceiro(detalhe.movimentos)}<h3>Saldo em aberto</h3>${tabela(detalhe.pendencias.map(x=>({...x,valorCentavos:x.saldo,pagoCentavos:0,saldoCentavos:x.saldo})),{acao:false})}</div></section>`;
   $('#fecharDetalhamentoCategoria').onclick=()=>modal.classList.remove('show');
   modal.classList.add('show');
 }
@@ -413,7 +420,7 @@ function ligarEventos(){
   });
   $$('[data-periodo-relatorio]').forEach(botao=>botao.onclick=()=>{
     const ano=hoje.slice(0,4),mes=hoje.slice(5,7);
-    periodoRelatorio=botao.dataset.periodoRelatorio==='ano'?{inicio:`${ano}-01-01`,fim:`${ano}-12-31`}:{inicio:`${ano}-${mes}-01`,fim:hoje};
+    periodoRelatorio=botao.dataset.periodoRelatorio==='ano'?{inicio:`${ano}-01-01`,fim:`${ano}-12-31`}:periodoMensal(`${ano}-${mes}`);
     render();
   });
   $$('[data-relatorio-aba]').forEach(botao=>botao.onclick=()=>{relatorioAba=botao.dataset.relatorioAba;render();});

@@ -1,6 +1,7 @@
 import assert from 'node:assert/strict';
 import {readFile} from 'node:fs/promises';
-import {detalharCategoria,exportarRelatorioPdf,gerarPdfRelatorio,resumirRelatorios} from '../src/js/backend/core/relatorios.js';
+import {detalharCategoria,exportarRelatorio,exportarRelatorioPdf,gerarPdfRelatorio,resumirRelatorios} from '../src/js/backend/core/relatorios.js';
+import {resumirDashboard} from '../src/js/backend/core/dashboard.js';
 
 const lancamentos=[
   {id:'1',descricao:'Matrícula Ana',tipo:'entrada',categoria:'Matrículas',valorCentavos:10000,competencia:'2026-08-05',situacao:'recebido',liquidadoEm:'2026-08-05T10:00:00.000Z'},
@@ -55,3 +56,35 @@ assert.equal(interfaceRelatorios.includes('Gasto no período'),true);
 assert.equal(interfaceRelatorios.includes('category-total-card'),true);
 assert.equal(interfaceRelatorios.includes('data-detalhar-categoria'),true);
 console.log('31 asserções aprovadas — cálculos, dashboard, detalhamento por categoria e PDF dos relatórios financeiros.');
+
+const dbConciliado={...bancoRelatorio,
+  listarLancamentos:()=>[
+    {id:'atrasado',tipo:'entrada',categoria:'Receitas escolares',descricao:'Receita de outubro',competencia:'2026-10-20',situacao:'recebido',valorCentavos:634900},
+    {id:'salario',tipo:'despesa',categoria:'Pessoal',descricao:'Despesa de setembro',competencia:'2026-09-30',situacao:'pendente',valorCentavos:100000}
+  ],
+  listarCaixaDiario:()=>[
+    {id:'1',lancamentoId:'atrasado',tipo:'entrada',data:'2026-11-03',origem:'Fechamento diário',formaPagamento:'Dinheiro',valorCentavos:634900},
+    {id:'2',lancamentoId:'salario',tipo:'despesa',data:'2026-10-23',formaPagamento:'Dinheiro',valorCentavos:30000},
+    {id:'3',lancamentoId:'salario',tipo:'despesa',data:'2026-11-04',formaPagamento:'Pix',valorCentavos:20000}
+  ],
+  obterConfiguracao:k=>k==='favorecido_despesa:salario'?'Prestador Teste':''
+};
+const filtro={inicio:'2026-11-01',fim:'2026-11-30',hoje:'2026-11-10'};
+const caixaNovo=resumirRelatorios(dbConciliado,filtro);
+const dashboard=resumirDashboard(dbConciliado,{referencia:'2026-11',hoje:filtro.hoje});
+assert.deepEqual([caixaNovo.totais.entradasRealizadas,caixaNovo.totais.despesasRealizadas,caixaNovo.totais.aPagar,caixaNovo.totais.saldoProjetado],[dashboard.entradas,dashboard.saidas,dashboard.aPagar,dashboard.projecao]);
+assert.deepEqual([caixaNovo.totais.entradasRealizadas,caixaNovo.totais.despesasRealizadas,caixaNovo.totais.aPagar],[634900,20000,50000]);
+assert.equal(caixaNovo.competencia.entradas,0);
+assert.equal(caixaNovo.financeiro.entradasPorDia[0].semDiscriminacao,634900);
+assert.equal(caixaNovo.financeiro.pendencias[0].favorecido,'Prestador Teste');
+const detalhe=detalharCategoria(dbConciliado,{categoria:'Pessoal',tipo:'despesa',...filtro});
+assert.deepEqual([detalhe.totais.realizado,detalhe.totais.pendente,detalhe.movimentos[0].formaPagamento],[20000,50000,'Pix']);
+const pdfConciliado=new TextDecoder('latin1').decode(gerarPdfRelatorio(caixaNovo));
+assert.match(pdfConciliado,/Entradas realizadas: R\$ 6349,00/);
+assert.match(pdfConciliado,/Prestador Teste/);
+let csv='';
+await exportarRelatorio({filesystem:{createDirectory:async()=>{},writeFile:async(_,v)=>{csv=v;}}},{modo:'sqlite',caminho:'C:\\CELC\\dados\\celc-financeiro.db',...dbConciliado},filtro);
+assert.match(csv,/"Movimento realizado";"2026-11-03";"2026-10-20".*"Sem discriminação";"6349,00"/);
+assert.match(csv,/"Despesa a pagar".*"Prestador Teste".*"500,00"/);
+assert.equal((csv.match(/"Movimento realizado"/g)||[]).length,2);
+console.log('Conciliação entre dashboard, relatório, categorias, PDF e CSV aprovada.');

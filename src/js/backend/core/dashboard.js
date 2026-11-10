@@ -33,14 +33,20 @@ function caixaEspecie(db,caixa,inicio,ate){
 }
 
 export function resumirDashboard(db,{referencia,hoje=new Date().toISOString().slice(0,10)}){
-  const mes=referencia.slice(0,7),inicio=mes+'-01',fim=mes+'-31',ate=fim<hoje?fim:hoje;
+  const mes=referencia.slice(0,7),[ano,numero]=mes.split('-').map(Number);
+  const ultimoDia=new Date(Date.UTC(ano,numero,0)).getUTCDate();
+  return resumirPeriodoFinanceiro(db,{inicio:mes+'-01',fim:mes+'-'+ultimoDia,hoje});
+}
+
+export function resumirPeriodoFinanceiro(db,{inicio,fim,hoje=new Date().toISOString().slice(0,10)}){
+  const mes=inicio.slice(0,7),ate=fim<hoje?fim:hoje;
   const lancamentos=db.listarLancamentos(),caixa=db.listarCaixaDiario?.()||[];
   const recebimentos=new Map(caixa.filter(x=>x.tipo==='entrada'&&x.lancamentoId&&dataValida(x.data)).map(x=>[x.lancamentoId,x]));
   const fluxo=fluxoRealizado({listarLancamentos:()=>lancamentos,listarCaixaDiario:()=>caixa})
     .map(x=>{const c=x.tipo==='entrada'?recebimentos.get(x.id):null;return {...x,data:c?.data||x.data,formaPagamento:formaRegistrada(c||x)};})
     .filter(x=>dataValida(x.data)&&x.data<=ate);
   const meses=new Map([[mes,totais()]]),anos=new Map([[mes.slice(0,4),totais()]]),pagos=new Map(),categorias=new Map(),despesasAnteriores=[];
-  const entradasPorDia=new Map(),movimentosPorForma=new Map(),parcelasPorDespesa=new Map(),pendencias=[];
+  const entradasPorDia=new Map(),movimentosPorForma=new Map(),parcelasPorDespesa=new Map(),pendencias=[],recebiveis=[],movimentos=[],atual=totais();
   let saldoInicial=0;
   for(const m of fluxo){
     const chave=m.data.slice(0,7),ano=chave.slice(0,4);
@@ -52,7 +58,8 @@ export function resumirDashboard(db,{referencia,hoje=new Date().toISOString().sl
       const parcelas=parcelasPorDespesa.get(m.id)||[];
       parcelas.push(m);parcelasPorDespesa.set(m.id,parcelas);
     }
-    if(chave===mes){
+    if(m.data>=inicio){
+      adicionar(atual,m);movimentos.push(m);
       const formas=movimentosPorForma.get(m.formaPagamento)||{forma:m.formaPagamento,entradas:0,saidas:0,itens:[]};
       formas[m.tipo==='entrada'?'entradas':'saidas']+=m.valorCentavos;formas.itens.push(m);movimentosPorForma.set(m.formaPagamento,formas);
       if(m.tipo==='entrada'){
@@ -63,18 +70,19 @@ export function resumirDashboard(db,{referencia,hoje=new Date().toISOString().sl
       }
     }
     if(m.data<inicio)saldoInicial+=(m.tipo==='entrada'?1:-1)*m.valorCentavos;
-    if(chave===mes&&m.tipo==='despesa'){
+    if(m.data>=inicio&&m.tipo==='despesa'){
       categorias.set(m.categoria,(categorias.get(m.categoria)||0)+m.valorCentavos);
-      if(m.competencia.slice(0,7)<mes)despesasAnteriores.push(m);
+      if(m.competencia.slice(0,7)<chave)despesasAnteriores.push(m);
     }
   }
-  const atual=meses.get(mes),saldoFinal=saldoInicial+resultado(atual);
+  const saldoFinal=saldoInicial+resultado(atual);
   let aPagar=0,aReceber=0,aPagarAnterior=0,aReceberAnterior=0;
   for(const l of lancamentos.filter(x=>x.competencia<=fim)){
     const saldo=Math.max(0,l.valorCentavos-(pagos.get(l.id)||0));
     if(l.tipo==='entrada'){
       aReceber+=saldo;
       if(l.competencia<inicio)aReceberAnterior+=saldo;
+      if(saldo>0)recebiveis.push({...l,saldo});
     }else{
       aPagar+=saldo;
       if(l.competencia<inicio)aPagarAnterior+=saldo;
@@ -89,5 +97,5 @@ export function resumirDashboard(db,{referencia,hoje=new Date().toISOString().sl
     const inicial=saldo,variacao=resultado(t);saldo+=variacao;
     return {periodo,...t,saldoInicial:inicial,resultado:variacao,saldoFinal:saldo};
   }).reverse();};
-  return {mes,...atual,saldoInicial,saldoFinal,resultado:resultado(atual),aPagar,aReceber,aPagarAnterior,aReceberAnterior,projecao:saldoFinal+aReceber-aPagar,meses:historico(meses),anos:historico(anos),categorias:[...categorias].sort((a,b)=>b[1]-a[1]),despesasAnteriores:despesasAnteriores.sort((a,b)=>b.data.localeCompare(a.data)),especie:caixaEspecie(db,caixa,inicio,ate),entradasPorDia:[...entradasPorDia.values()].sort((a,b)=>b.data.localeCompare(a.data)),movimentosPorForma:[...movimentosPorForma.values()].sort((a,b)=>a.forma.localeCompare(b.forma,'pt-BR')),pendencias:pendencias.sort((a,b)=>b.saldo-a.saldo)};
+  return {mes,inicio,fim,ate,...atual,saldoInicial,saldoFinal,resultado:resultado(atual),aPagar,aReceber,aPagarAnterior,aReceberAnterior,projecao:saldoFinal+aReceber-aPagar,meses:historico(meses),anos:historico(anos),categorias:[...categorias].sort((a,b)=>b[1]-a[1]),despesasAnteriores:despesasAnteriores.sort((a,b)=>b.data.localeCompare(a.data)),especie:caixaEspecie(db,caixa,inicio,ate),entradasPorDia:[...entradasPorDia.values()].sort((a,b)=>b.data.localeCompare(a.data)),movimentosPorForma:[...movimentosPorForma.values()].sort((a,b)=>a.forma.localeCompare(b.forma,'pt-BR')),pendencias:pendencias.sort((a,b)=>b.saldo-a.saldo),recebiveis,movimentos:movimentos.sort((a,b)=>a.data.localeCompare(b.data))};
 }

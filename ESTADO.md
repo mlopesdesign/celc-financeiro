@@ -1,6 +1,13 @@
 # Estado do projeto — CELC Financeiro
 
-**Versão atual:** `0.2.31`
+**Versão atual:** `0.2.32`
+
+## Relatórios conciliados — 0.2.32
+
+- Dashboard, visão geral, categorias, extrato e exportações usam a mesma apuração por data efetiva.
+- Competência é exibida separadamente com os valores integrais lançados, sem misturar com recebimentos e pagamentos.
+- Relatórios mostram saldo trazido, saldo acumulado, projeção, entradas por dia e forma, parcelas por favorecido e saldo em aberto.
+- Exportações mantêm referências separadas do movimento realizado para não somar parcelas duas vezes. Não há alteração no banco.
 
 ## Conferência de recebimentos e parcelas — 0.2.31
 
