@@ -1,3 +1,4 @@
+import {aplicarCorrecaoDatasRecebimento} from './core/correcoes.js';
 const SCHEMA = `
 CREATE TABLE IF NOT EXISTS lancamentos (id TEXT PRIMARY KEY, descricao TEXT NOT NULL, tipo TEXT NOT NULL, categoria_id TEXT, categoria TEXT NOT NULL, valor_centavos INTEGER NOT NULL, competencia TEXT NOT NULL, vencimento TEXT, liquidado_em TEXT, situacao TEXT NOT NULL, recorrencia TEXT NOT NULL DEFAULT 'avulso', criado_em TEXT NOT NULL, atualizado_em TEXT NOT NULL, usuario_id TEXT NOT NULL);
 CREATE TABLE IF NOT EXISTS categorias (id TEXT PRIMARY KEY, nome TEXT NOT NULL, tipo TEXT NOT NULL, ativa INTEGER NOT NULL DEFAULT 1, criado_em TEXT NOT NULL);
@@ -176,6 +177,12 @@ export async function abrirBancoSeguro(){
       }finally{estado.transacaoAtiva=false;banco.executar=executarPersistente;}
     };
     await banco.executar("UPDATE lancamentos SET categoria=COALESCE(NULLIF(categoria,''),'Sem categoria')");
+    try{
+      await aplicarCorrecaoDatasRecebimento(banco,{antesDeAplicar:async()=>{
+        const bytes=await Neutralino.filesystem.readBinaryFile(caminho);
+        await Neutralino.filesystem.writeBinaryFile(caminho.replace(/\.db$/i,'')+'-antes-correcao-datas.db',bytes);
+      }});
+    }catch(erro){console.error('Correção automática das datas de recebimento não aplicada.',erro);}
     const confirmado=await Neutralino.filesystem.readBinaryFile(caminho);
     const binario=normalizarBytes(confirmado);
     if(!binario || binario.length<100 || new TextDecoder().decode(binario.slice(0,16))!=='SQLite format 3\u0000') throw new Error('O arquivo de dados não foi confirmado no disco.');

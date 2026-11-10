@@ -6,7 +6,7 @@ import {favorecidoDaDespesa} from './backend/core/dashboard.js';
 import {verificarAtualizacao,instalarAtualizacao} from './backend/atualizador.js';
 import {hojeLocal} from './backend/core/datas.js';
 
-const APP_VERSION='0.2.35';
+const APP_VERSION='0.2.36';
 let hoje=hojeLocal();
 let dataCaixa='';
 function centavosDe(texto){let s=String(texto??'').replace(/R\$|\s/g,'');if(s==='')return NaN;if(!/^\d{1,3}(\.\d{3})+(,\d{1,2})?$|^\d+(,\d{1,2})?$|^\d+\.\d{1,2}$/.test(s))return NaN;s=s.includes(',')?s.replace(/\./g,'').replace(',','.'):/^\d{1,3}(\.\d{3})+$/.test(s)?s.replace(/\./g,''):s;return Math.round(Number(s)*100);}

@@ -1,10 +1,10 @@
 {
   "name": "celc-financeiro",
-  "version": "0.2.35",
+  "version": "0.2.36",
   "private": true,
   "type": "module",
   "scripts": {
-    "test": "node tests/lancamentos.mjs && node tests/sugestoes.mjs && node tests/projecao.mjs && node tests/auth.mjs && node tests/atualizador.mjs && node tests/backup.mjs && node tests/persistencia.mjs && node tests/categorias.mjs && node tests/escolar.mjs && node tests/caixa-formas.mjs && node tests/relatorios.mjs && node tests/vencidos.mjs && node tests/pagamentos.mjs && node tests/dashboard.mjs && node --import ./tests/p0-relogio.mjs tests/p0-persistencia.mjs && node tests/p1-calculos.mjs && node tests/utf8.mjs",
+    "test": "node tests/lancamentos.mjs && node tests/sugestoes.mjs && node tests/projecao.mjs && node tests/auth.mjs && node tests/atualizador.mjs && node tests/backup.mjs && node tests/persistencia.mjs && node tests/categorias.mjs && node tests/escolar.mjs && node tests/caixa-formas.mjs && node tests/relatorios.mjs && node tests/vencidos.mjs && node tests/pagamentos.mjs && node tests/dashboard.mjs && node --import ./tests/p0-relogio.mjs tests/p0-persistencia.mjs && node tests/p1-calculos.mjs && node tests/p2-correcao-datas.mjs && node tests/utf8.mjs",
     "graphify": "node tools/graphify.js"
   }
 }
