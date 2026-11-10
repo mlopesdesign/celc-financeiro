@@ -20,7 +20,7 @@ export const saldoDoLancamento=(db,item)=>Math.max(0,item.valorCentavos-valorRea
 export function fluxoRealizado(db){
   return db.listarLancamentos().flatMap(item=>{
     const pagamentos=item.tipo==='despesa'?pagamentosDaDespesa(db,item):[];
-    if(pagamentos.length)return pagamentos.map(p=>({...item,valorCentavos:p.valorCentavos,data:p.data,liquidadoEm:p.data,situacao:'pago',pagamentoId:p.id}));
+    if(pagamentos.length)return pagamentos.map(p=>({...item,valorCentavos:p.valorCentavos,data:p.data,liquidadoEm:p.data,situacao:'pago',pagamentoId:p.id,formaPagamento:p.formaPagamento}));
     return valorRealizado(db,item)?[{...item,data:(item.liquidadoEm||item.competencia).slice(0,10)}]:[];
   });
 }
@@ -28,7 +28,7 @@ export function fluxoRealizado(db){
 export async function registrarPagamentoDespesa(db,dados,u={id:'direcao-celc'}){
   const item=db.listarLancamentos().find(x=>x.id===dados.id);
   if(!item||item.tipo!=='despesa')return {ok:false,erro:'Selecione uma despesa cadastrada.'};
-  const saldo=saldoDoLancamento(db,item),valor=Number(dados.valorCentavos),data=String(dados.data||''),forma=String(dados.formaPagamento||'Dinheiro').trim();
+  const saldo=saldoDoLancamento(db,item),valor=Number(dados.valorCentavos),data=String(dados.data||''),forma=String(dados.formaPagamento??'Não informado').trim();
   if(!Number.isSafeInteger(valor)||valor<=0)return {ok:false,erro:'Informe um pagamento maior que zero.'};
   if(valor>saldo)return {ok:false,erro:'O pagamento não pode ultrapassar o saldo da despesa.'};
   if(!dataValida(data))return {ok:false,erro:'Informe uma data de pagamento válida.'};

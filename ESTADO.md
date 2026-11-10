@@ -1,6 +1,13 @@
 # Estado do projeto — CELC Financeiro
 
-**Versão atual:** `0.2.30`
+**Versão atual:** `0.2.31`
+
+## Conferência de recebimentos e parcelas — 0.2.31
+
+- Recebimentos por dia e por forma registrada, sem presumir que o fechamento agregado foi em dinheiro.
+- Despesas por favorecido, competência original, saldo trazido, pagamentos do mês, total pago, parcelas e saldo restante, incluindo dívidas anteriores quitadas no mês.
+- Favorecido é informado ao editar a despesa, persistido nas configurações existentes e nunca inferido dos registros anteriores.
+- Fechamento agregado novo grava forma não informada. Não há migração ou reclassificação automática dos lançamentos existentes.
 
 ## Fechamento mensal e anual — 0.2.30
 

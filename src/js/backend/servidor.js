@@ -5,11 +5,13 @@ import {detalharCategoria,exportarRelatorio,exportarRelatorioPdf,resumirRelatori
 import {registrarCaixaDiario,listarCaixaDiario,resumirCaixaDiario,pagarDespesaNoCaixa,excluirCaixaDiario,registrarDevedor,listarDevedores,baixarDevedor} from './core/escolar.js';
 import {trocarSenha} from '../auth.js';
 import {registrarPagamentoDespesa,historicoMensalCategoria,saldoDoLancamento} from './core/pagamentos.js';
-import {resumirDashboard,salvarContagemEspecie} from './core/dashboard.js';
+import {resumirDashboard,salvarContagemEspecie,salvarFavorecidoDespesa} from './core/dashboard.js';
 
 export function criarApiFinanceira(opcoes){
   const {banco,usuario=()=>({id:'direcao-celc'})}=opcoes,apiOriginal=criarApi(opcoes);
   const salvarDespesa=async d=>{
+    const favorecido=String(d.favorecido??'').trim();
+    if(favorecido.length>120)return {ok:false,erro:'O nome do favorecido deve ter até 120 caracteres.'};
     const pagamentos=d.pagamentos||[];
     if(!Array.isArray(pagamentos)||pagamentos.some(p=>!Number.isSafeInteger(p.valorCentavos)||p.valorCentavos<=0))return {ok:false,erro:'Confira os valores de cada pagamento.'};
     const existente=d.id?banco.listarLancamentos().find(x=>x.id===d.id):null;
@@ -17,6 +19,7 @@ export function criarApiFinanceira(opcoes){
     if(!r.ok)return r;
     const id=d.id||r.lancamento.id;
     for(const pagamento of pagamentos){const resultado=await registrarPagamentoDespesa(banco,{...pagamento,id},usuario());if(!resultado.ok)return resultado;}
+    if(d.favorecido!==undefined)await salvarFavorecidoDespesa(banco,id,favorecido);
     return {ok:true,id};
   };
   const novas={

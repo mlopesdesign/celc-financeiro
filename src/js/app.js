@@ -2,9 +2,10 @@ import {abrirBancoSeguro} from './backend/db.js';
 import {garantirAcesso,validarAcesso} from './auth.js';
 import {criarApiFinanceira as criarApi} from './backend/servidor.js';
 import {valorRealizado,saldoDoLancamento,pagamentosDaDespesa} from './backend/core/pagamentos.js';
+import {favorecidoDaDespesa} from './backend/core/dashboard.js';
 import {verificarAtualizacao,instalarAtualizacao} from './backend/atualizador.js';
 
-const APP_VERSION='0.2.30';
+const APP_VERSION='0.2.31';
 const hoje=new Date().toISOString().slice(0,10);
 const $=seletor=>document.querySelector(seletor);
 const $$=seletor=>Array.from(document.querySelectorAll(seletor));
@@ -77,9 +78,9 @@ async function dashboard(){
       ${card('Saldo trazido',r.saldoInicial,'Acumulado antes deste mês')}
       ${card('Entradas do mês',r.entradas,'Pela data do recebimento')}
       ${card('Saídas do mês',r.saidas,'Pela data do pagamento')}
-      ${card('Saldo final realizado',r.saldoFinal,'Saldo trazido + entradas − saídas')}
+      ${card('Saldo acumulado dos lançamentos',r.saldoFinal,'Todas as formas; não é dinheiro na gaveta')}
     </section>
-    <section class="content-grid"><article class="panel"><h3>Resultado do mês e projeção</h3><div class="metric-strip">
+    <section class="content-grid dashboard-summary"><article class="panel"><h3>Resultado do mês e projeção</h3><div class="metric-strip">
       <span>Resultado do mês <b class="${sinal(r.resultado)}">${brl(r.resultado)}</b></span>
       <span>A receber registrado <b>${brl(r.aReceber)}</b></span><span>A pagar registrado <b>${brl(r.aPagar)}</b></span>
       <span>Saldo projetado <b class="${sinal(r.projecao)}">${brl(r.projecao)}</b></span>
@@ -92,6 +93,7 @@ async function dashboard(){
       <details class="dashboard-contagem"><summary>${e.base?'Atualizar contagem':'Registrar contagem'}</summary>
       <form id="formContagemEspecie" class="stack"><label>Data do fechamento<input name="data" type="date" required></label><label>Dinheiro contado (R$)<input name="valor" type="number" min="0" step="0.01" required></label><button class="primary-action" type="submit">Salvar contagem</button></form></details>
     </article></section>
+    ${detalhesFinanceirosDashboard(r)}
     <section class="panel dashboard-section"><h3>Despesas de meses anteriores pagas neste mês</h3><p class="subtitle">${brl(r.anteriores)} já incluídos nas saídas do mês.</p>
       ${r.despesasAnteriores.length?`<div class="table-wrap"><table><thead><tr><th>Despesa</th><th>Categoria</th><th>Competência</th><th>Data do pagamento</th><th>Valor pago</th></tr></thead><tbody>${r.despesasAnteriores.map(x=>`<tr><td>${esc(x.descricao)}</td><td>${esc(x.categoria)}</td><td>${dataPt(x.competencia)}</td><td>${dataPt(x.data)}</td><td class="amount out">${brl(x.valorCentavos)}</td></tr>`).join('')}</tbody></table></div>`:'<p class="subtitle">Nenhum pagamento de competência anterior neste mês.</p>'}</section>
     ${historico('Histórico mensal',r.meses)}
@@ -99,6 +101,20 @@ async function dashboard(){
     <section class="panel dashboard-section"><h3>Despesas pagas por categoria</h3><div class="category-list">${r.categorias.map(([nome,valor])=>`<button class="text-button category-history-button" data-historico-categoria="${esc(nome)}">${esc(nome)} <b>${brl(valor)}</b></button>`).join('')||'<span>Sem despesas pagas no período.</span>'}</div></section>
     ${await comparativoDashboard()}
     <section class="panel dashboard-section"><h3>Últimos lançamentos cadastrados</h3>${tabela(recentes)}</section>`;
+}
+
+function detalhesFinanceirosDashboard(r){
+  const linhas=itens=>`<ul class="dashboard-detalhes">${itens.map(x=>`<li>${dataPt(x.data)} · ${esc(x.descricao)} · ${x.tipo==='entrada'?'Entrada':'Saída'} · ${brl(x.valorCentavos)} · ${esc(x.formaPagamento)}</li>`).join('')}</ul>`;
+  return `<section class="panel dashboard-section"><h3>A pagar por favorecido</h3><p class="subtitle">Saldo em aberto: <b>${brl(r.aPagar)}</b>. Inclui despesas sem pagamento e parcialmente pagas.</p>
+    ${r.pendencias.length?`<div class="table-wrap"><table><thead><tr><th>Favorecido / despesa</th><th>Competência</th><th>Integral</th><th>Em aberto na virada</th><th>Pago no mês</th><th>Total pago</th><th>Falta pagar</th><th>Ação</th></tr></thead><tbody>
+    ${r.pendencias.map(x=>`<tr><td><details><summary><b>${esc(x.favorecido||'Favorecido não informado')}</b></summary><p>${esc(x.descricao)}</p>${x.parcelas.length?linhas(x.parcelas):'<p>Nenhum pagamento registrado.</p>'}</details>${x.favorecido?'':`<small>${esc(x.descricao)}</small>`}</td><td>${dataPt(x.competencia)}</td><td>${brl(x.valorCentavos)}</td><td>${brl(x.trazido)}</td><td>${brl(x.pagoMes)}</td><td>${brl(x.pagoTotal)}</td><td class="amount out">${brl(x.saldo)}</td><td><button type="button" class="text-button" data-editar="${esc(x.id)}">${x.favorecido?'Abrir despesa':'Informar favorecido'}</button></td></tr>`).join('')}
+    </tbody></table></div>`:'<p class="subtitle">Nenhuma despesa em aberto ou trazida e quitada neste período.</p>'}</section>
+    <section class="panel dashboard-section"><h3>Recebimentos por dia</h3><div class="table-wrap"><table><thead><tr><th>Data</th><th>Recebimentos sem discriminação</th><th>Total do dia</th></tr></thead><tbody>
+    ${r.entradasPorDia.map(d=>`<tr><td><details><summary>${dataPt(d.data)}</summary>${linhas(d.itens)}</details></td><td>${brl(d.semDiscriminacao)}</td><td class="amount in">${brl(d.total)}</td></tr>`).join('')||'<tr><td colspan="3">Nenhum recebimento no período.</td></tr>'}
+    </tbody></table></div></section>
+    <section class="panel dashboard-section"><h3>Movimentação por forma registrada</h3><div class="table-wrap"><table><thead><tr><th>Forma</th><th>Entradas</th><th>Saídas</th><th>Movimentação líquida</th></tr></thead><tbody>
+    ${r.movimentosPorForma.map(f=>`<tr><td><details><summary>${esc(f.forma)}</summary>${linhas(f.itens)}</details></td><td>${brl(f.entradas)}</td><td>${brl(f.saidas)}</td><td>${brl(f.entradas-f.saidas)}</td></tr>`).join('')||'<tr><td colspan="4">Nenhuma movimentação no período.</td></tr>'}
+    </tbody><tfoot><tr><th>Total</th><td>${brl(r.entradas)}</td><td>${brl(r.saidas)}</td><td>${brl(r.resultado)}</td></tr></tfoot></table></div></section>`;
 }
 
 function periodoMensal(mes){const [ano,numero]=mes.split('-').map(Number);return {inicio:`${mes}-01`,fim:`${mes}-${String(new Date(ano,numero,0).getDate()).padStart(2,'0')}`};}
@@ -135,7 +151,7 @@ async function abrirDetalhamentoCaixa(){
   let modal=$('#modalDetalhamentoCaixa');
   if(!modal){
     modal=document.createElement('div');modal.className='modal-backdrop';modal.id='modalDetalhamentoCaixa';
-    modal.innerHTML=`<section class="modal stack caixa-detalhamento"><button type="button" class="close" id="fecharDetalhamento">×</button><p class="eyebrow">CAIXA DIÁRIO</p><h2>Detalhar despesas</h2><p class="subtitle">Todos os pagamentos de despesas cadastradas aparecem aqui, inclusive funcionários, terceirizados, categorias e pagamentos fixos. O pagamento padrão é em dinheiro.</p><label>Buscar despesa cadastrada<input id="buscaDespesaCaixa" placeholder="Funcionário, terceirizado, descrição ou categoria"></label><div id="resultadosDespesaCaixa" class="expense-search-results"></div><hr class="form-separator"><h3>Despesa não cadastrada</h3><form id="formDespesaAvulsaCaixa" class="stack"><label>Descrição<input name="origem" placeholder="Ex.: compra emergencial de material" required></label><div class="two-columns"><label>Valor (R$)<input name="valor" type="number" min="0.01" step="0.01" required></label><label>Pagamento<select name="formaPagamento"><option selected>Dinheiro</option><option>Pix</option><option>Cartão</option><option>Boleto</option><option>Transferência</option></select></label></div><label>Mês de referência<select name="mesReferencia">${opcoesMeses()}</select></label><label>Observação opcional<input name="observacao" placeholder="Anotação interna"></label><div class="row-actions"><button class="outline-button" id="fecharDetalhamentoSecundario" type="button">Fechar</button><button class="primary-action" type="submit">Registrar despesa no caixa</button></div></form></section>`;
+    modal.innerHTML=`<section class="modal stack caixa-detalhamento"><button type="button" class="close" id="fecharDetalhamento">×</button><p class="eyebrow">CAIXA DIÁRIO</p><h2>Detalhar despesas</h2><p class="subtitle">Todos os pagamentos de despesas cadastradas aparecem aqui, inclusive funcionários, terceirizados, categorias e pagamentos fixos. </p><label>Buscar despesa cadastrada<input id="buscaDespesaCaixa" placeholder="Funcionário, terceirizado, descrição ou categoria"></label><div id="resultadosDespesaCaixa" class="expense-search-results"></div><hr class="form-separator"><h3>Despesa não cadastrada</h3><form id="formDespesaAvulsaCaixa" class="stack"><label>Descrição<input name="origem" placeholder="Ex.: compra emergencial de material" required></label><div class="two-columns"><label>Valor (R$)<input name="valor" type="number" min="0.01" step="0.01" required></label><label>Pagamento<select name="formaPagamento" required><option value="">Selecione</option><option>Dinheiro</option><option>Pix</option><option>Transferência</option><option>Cartão</option><option>Boleto</option><option>Cheque compensado</option><option>Não informado</option></select></label></div><label>Mês de referência<select name="mesReferencia">${opcoesMeses()}</select></label><label>Observação opcional<input name="observacao" placeholder="Anotação interna"></label><div class="row-actions"><button class="outline-button" id="fecharDetalhamentoSecundario" type="button">Fechar</button><button class="primary-action" type="submit">Registrar despesa no caixa</button></div></form></section>`;
     document.body.append(modal);
     const fechar=()=>modal.classList.remove('show');$('#fecharDetalhamento').onclick=fechar;$('#fecharDetalhamentoSecundario').onclick=fechar;modal.onclick=evento=>{if(evento.target===modal)fechar()};
     $('#buscaDespesaCaixa').oninput=()=>listarDespesasDoCaixa();
@@ -147,8 +163,8 @@ async function abrirDetalhamentoCaixa(){
 async function listarDespesasDoCaixa(){
   const modal=$('#modalDetalhamentoCaixa'),alvo=$('#resultadosDespesaCaixa');if(!modal||!alvo)return;
   const busca=$('#buscaDespesaCaixa')?.value||'',itens=(await api('lancamentos:listar',{tipo:'despesa',busca})).filter(item=>!liquidado(item));
-  alvo.innerHTML=itens.map(item=>`<article class="expense-search-result"><div><b>${esc(item.descricao)}</b><small>${esc(item.categoria)}${item.recorrencia==='mensal'?' · Pagamento fixo mensal':''} · Competência: ${dataPt(item.competencia)}</small><small>Total ${brl(item.valorCentavos)} · Pago ${brl(item.pagoCentavos||0)} · Saldo ${brl(item.saldoCentavos??item.valorCentavos)}</small></div><div><label>Valor deste pagamento (R$)<input data-valor-pagamento-caixa type="number" min="0.01" step="0.01" max="${((item.saldoCentavos??item.valorCentavos)/100).toFixed(2)}" value="${((item.saldoCentavos??item.valorCentavos)/100).toFixed(2)}"></label><button class="text-button" data-pagar-despesa-caixa="${esc(item.id)}">Registrar pagamento</button></div></article>`).join('')||'<p class="subtitle">Nenhuma despesa em aberto encontrada.</p>';
-  $$('[data-pagar-despesa-caixa]').forEach(botao=>botao.onclick=async()=>{botao.disabled=true;try{const registro=botao.closest('.expense-search-result'),valor=registro.querySelector('[data-valor-pagamento-caixa]').value,resposta=await api('caixa:pagarDespesa',{id:botao.dataset.pagarDespesaCaixa,data:modal.dataset.data,valorCentavos:Math.round(Number(valor)*100),formaPagamento:$('#formDespesaAvulsaCaixa').formaPagamento.value||'Dinheiro'});aviso(resposta.ok?'Pagamento registrado na despesa e no caixa.':resposta.erro,!resposta.ok);if(resposta.ok){modal.classList.remove('show');render();}}catch(erro){aviso(erro.message||'Não foi possível registrar o pagamento.',true);}finally{botao.disabled=false;}});
+  alvo.innerHTML=itens.map(item=>`<article class="expense-search-result"><div><b>${esc(item.descricao)}</b><small>${esc(item.categoria)}${item.recorrencia==='mensal'?' · Pagamento fixo mensal':''} · Competência: ${dataPt(item.competencia)}</small><small>Total ${brl(item.valorCentavos)} · Pago ${brl(item.pagoCentavos||0)} · Saldo ${brl(item.saldoCentavos??item.valorCentavos)}</small></div><div><label>Valor deste pagamento (R$)<input data-valor-pagamento-caixa type="number" min="0.01" step="0.01" max="${((item.saldoCentavos??item.valorCentavos)/100).toFixed(2)}" value="${((item.saldoCentavos??item.valorCentavos)/100).toFixed(2)}"></label><label>Forma do pagamento<select data-forma-pagamento-caixa><option value="">Selecione</option><option>Dinheiro</option><option>Pix</option><option>Transferência</option><option>Cartão</option><option>Boleto</option><option>Cheque compensado</option><option>Não informado</option></select></label><button class="text-button" data-pagar-despesa-caixa="${esc(item.id)}">Registrar pagamento</button></div></article>`).join('')||'<p class="subtitle">Nenhuma despesa em aberto encontrada.</p>';
+  $$('[data-pagar-despesa-caixa]').forEach(botao=>botao.onclick=async()=>{botao.disabled=true;try{const registro=botao.closest('.expense-search-result'),valor=registro.querySelector('[data-valor-pagamento-caixa]').value,resposta=await api('caixa:pagarDespesa',{id:botao.dataset.pagarDespesaCaixa,data:modal.dataset.data,valorCentavos:Math.round(Number(valor)*100),formaPagamento:registro.querySelector('[data-forma-pagamento-caixa]').value});aviso(resposta.ok?'Pagamento registrado na despesa e no caixa.':resposta.erro,!resposta.ok);if(resposta.ok){modal.classList.remove('show');render();}}catch(erro){aviso(erro.message||'Não foi possível registrar o pagamento.',true);}finally{botao.disabled=false;}});
 }
 
 function tabelaDevedores(itens){
@@ -274,10 +290,12 @@ function abrirModal(item=null,predefinido={}){
 
 function prepararPagamentos(form,item){
   $('#pagamentosDespesa')?.remove();
+  $('#campoFavorecido')?.remove();
   form.liquidacao.disabled=false;
   form.valor.closest('label').firstChild.textContent=form.tipo.value==='despesa'?'Valor integral (R$)':'Valor (R$)';
   form.liquidacao.innerHTML=form.tipo.value==='despesa'?'<option value="aberto">Sem pagamento agora</option><option value="realizado">Pagamento integral</option><option value="parcial">Pagamentos parciais</option>':'<option value="aberto">Ainda não realizado</option><option value="realizado">Realizado hoje</option>';
   if(form.tipo.value!=='despesa'){form.liquidacao.value=item&&liquidado(item)?'realizado':'aberto';return;}
+  form.descricao.closest('label').insertAdjacentHTML('afterend',`<label id="campoFavorecido">Favorecido<input name="favorecido" maxlength="120" value="${esc(item?favorecidoDaDespesa(banco,item.id):'')}"></label>`);
   const pagamentos=item?pagamentosDaDespesa(banco,item):[],pago=item?valorRealizado(banco,item):0;
   form.insertAdjacentHTML('beforeend',`<section id="pagamentosDespesa"><div class="metric-strip"><span>Total pago <b>${brl(pago)}</b></span><span>Saldo <b id="saldoDespesa">${brl((item?.valorCentavos||0)-pago)}</b></span></div>${pagamentos.length?`<h3>Pagamentos registrados</h3><div class="payment-history">${pagamentos.map(p=>`<p>${dataPt(p.data)} · ${brl(p.valorCentavos)} · ${esc(p.formaPagamento)}</p>`).join('')}</div>`:''}<div id="novosPagamentos" hidden><div id="linhasPagamentos"></div><button type="button" id="adicionarPagamento" class="outline-button">Adicionar pagamento</button></div></section>`);
   form.dataset.pagoAnterior=String(pago);
@@ -297,7 +315,7 @@ function prepararPagamentos(form,item){
 
 function adicionarLinhaPagamento(valor=0){
   const linha=document.createElement('div');linha.className='payment-row';
-  linha.innerHTML=`<label>Data<input data-pagamento-data type="date" value="${hoje}" required></label><label>Valor pago (R$)<input data-pagamento-valor type="number" min="0.01" step="0.01" value="${valor?(valor/100).toFixed(2):''}"></label><label>Forma<select data-pagamento-forma><option>Dinheiro</option><option>Pix</option><option>Transferência</option><option>Cartão</option><option>Boleto</option></select></label><button type="button" class="text-button danger" aria-label="Remover pagamento">Remover</button>`;
+  linha.innerHTML=`<label>Data<input data-pagamento-data type="date" value="${hoje}" required></label><label>Valor pago (R$)<input data-pagamento-valor type="number" min="0.01" step="0.01" value="${valor?(valor/100).toFixed(2):''}"></label><label>Forma<select data-pagamento-forma><option value="">Selecione</option><option>Dinheiro</option><option>Pix</option><option>Transferência</option><option>Cartão</option><option>Boleto</option><option>Cheque compensado</option><option>Não informado</option></select></label><button type="button" class="text-button danger" aria-label="Remover pagamento">Remover</button>`;
   linha.querySelector('button').onclick=()=>{linha.remove();atualizarLinhasPagamento();};
   linha.querySelector('[data-pagamento-valor]').oninput=atualizarLinhasPagamento;
   $('#linhasPagamentos').append(linha);
@@ -420,7 +438,7 @@ function ligarEventos(){
   $('#formCaixa')&&($('#formCaixa').onsubmit=async evento=>{
     evento.preventDefault();
     const dados=Object.fromEntries(new FormData(evento.currentTarget));
-    const resposta=await api('caixa:registrar',{...dados,formaPagamento:'Dinheiro',receitasCentavos:Math.round(Number(dados.receita||0)*100),despesasCentavos:Math.round(Number(dados.despesa||0)*100)});
+    const resposta=await api('caixa:registrar',{...dados,formaPagamento:'Não informado',receitasCentavos:Math.round(Number(dados.receita||0)*100),despesasCentavos:Math.round(Number(dados.despesa||0)*100)});
     aviso(resposta.ok?'Fechamento diário registrado.':resposta.erro,!resposta.ok);
     if(resposta.ok)render();
   });
