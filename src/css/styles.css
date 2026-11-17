@@ -45,3 +45,4 @@ main{padding:42px 56px 56px;max-width:1560px}header{margin-bottom:34px}.content-
 .dashboard-contagem form{margin-top:14px}
 .metric-strip b.out,.summary-card h2.out{color:#a6323a}
 .metric-strip b.in,.summary-card h2.in{color:#18734d}
+.tabela-com-acoes th:last-child,.tabela-com-acoes td:last-child{position:sticky;right:0;background:var(--paper);box-shadow:-8px 0 8px -8px rgba(11,31,58,.18);z-index:1}.tabela-com-acoes thead th:last-child{z-index:2}.danger-outline{width:100%;margin-top:8px;color:var(--red)!important;border-color:var(--red)!important}

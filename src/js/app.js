@@ -6,7 +6,7 @@ import {favorecidoDaDespesa} from './backend/core/dashboard.js';
 import {verificarAtualizacao,instalarAtualizacao} from './backend/atualizador.js';
 import {hojeLocal} from './backend/core/datas.js';
 
-const APP_VERSION='0.2.36';
+const APP_VERSION='0.2.37';
 let hoje=hojeLocal();
 let dataCaixa='';
 function centavosDe(texto){let s=String(texto??'').replace(/R\$|\s/g,'');if(s==='')return NaN;if(!/^\d{1,3}(\.\d{3})+(,\d{1,2})?$|^\d+(,\d{1,2})?$|^\d+\.\d{1,2}$/.test(s))return NaN;s=s.includes(',')?s.replace(/\./g,'').replace(',','.'):/^\d{1,3}(\.\d{3})+$/.test(s)?s.replace(/\./g,''):s;return Math.round(Number(s)*100);}
@@ -78,7 +78,7 @@ function opcoesMeses(selecionado=hoje.slice(0,7)){
 function tabela(itens,{acao=true}={}){
   itens=itens.map(item=>{const pago=item.pagoCentavos??valorRealizado(banco,item),saldo=item.saldoCentavos??saldoDoLancamento(banco,item);return {...item,situacao:item.tipo==='despesa'&&pago>0&&saldo>0?`Parcial: ${brl(pago)} pagos · ${brl(saldo)} em aberto`:item.situacao};});
   const vazio=`<tr><td colspan="${acao?7:6}" class="empty">Nenhum lançamento encontrado.</td></tr>`;
-  return `<div class="table-wrap"><table><thead><tr><th>DESCRIÇÃO</th><th>CATEGORIA</th><th>COMPETÊNCIA</th><th>VENCIMENTO</th><th>VALOR</th><th>SITUAÇÃO</th>${acao?'<th>AÇÕES</th>':''}</tr></thead><tbody>${itens.map(item=>`<tr><td><div class="title-stack"><b>${esc(item.descricao)}</b>${item.recorrencia==='mensal'?'<small>Fixo mensal</small>':''}</div></td><td>${esc(item.categoria)}</td><td>${dataPt(item.competencia)}</td><td>${dataPt(item.vencimento)}</td><td class="amount ${item.tipo==='entrada'?'in':'out'}">${item.tipo==='entrada'?'+':'-'} ${brl(item.valorCentavos)}</td><td><span class="status ${liquidado(item)?'received':'pending'}">${esc(item.situacao)}</span></td>${acao?`<td><div class="row-actions">${liquidado(item)?'<span class="action-note">Liquidado</span>':`<button data-baixar="${esc(item.id)}" class="text-button">${item.tipo==='entrada'?'Receber':'Pagar'}</button>`}<button data-editar="${esc(item.id)}" class="text-button">Editar</button><button data-excluir="${esc(item.id)}" class="text-button danger">Excluir</button></div></td>`:''}</tr>`).join('')||vazio}</tbody></table></div>`;
+  return `<div class="table-wrap"><table class="${acao?'tabela-com-acoes':''}"><thead><tr><th>DESCRIÇÃO</th><th>CATEGORIA</th><th>COMPETÊNCIA</th><th>VENCIMENTO</th><th>VALOR</th><th>SITUAÇÃO</th>${acao?'<th>AÇÕES</th>':''}</tr></thead><tbody>${itens.map(item=>`<tr><td><div class="title-stack"><b>${esc(item.descricao)}</b>${item.recorrencia==='mensal'?'<small>Fixo mensal</small>':''}</div></td><td>${esc(item.categoria)}</td><td>${dataPt(item.competencia)}</td><td>${dataPt(item.vencimento)}</td><td class="amount ${item.tipo==='entrada'?'in':'out'}">${item.tipo==='entrada'?'+':'-'} ${brl(item.valorCentavos)}</td><td><span class="status ${liquidado(item)?'received':'pending'}">${esc(item.situacao)}</span></td>${acao?`<td><div class="row-actions">${liquidado(item)?'<span class="action-note">Liquidado</span>':`<button data-baixar="${esc(item.id)}" class="text-button">${item.tipo==='entrada'?'Receber':'Pagar'}</button>`}<button data-editar="${esc(item.id)}" class="text-button">Editar</button><button data-excluir="${esc(item.id)}" class="text-button danger">Excluir</button></div></td>`:''}</tr>`).join('')||vazio}</tbody></table></div>`;
 }
 
 async function dashboard(){
@@ -283,10 +283,31 @@ async function atualizarSugestoesDescricao(){
   lista.innerHTML=sugestoes.map(item=>`<option value="${esc(item.descricao)}" label="${esc(item.categoria||'Sem categoria')}"></option>`).join('');
 }
 
+async function excluirLancamentoComConfirmacao(id){
+  const item=banco.listarLancamentos().find(x=>x.id===id);
+  if(!item)return false;
+  const pagos=banco.listarCaixaDiario().filter(x=>x.lancamentoId===item.id);
+  const somaPagos=pagos.reduce((t,x)=>t+x.valorCentavos,0);
+  const detalhe=`${item.tipo==='despesa'?'Despesa':'Entrada'} "${item.descricao}" — ${brl(item.valorCentavos)} (${dataPt(item.competencia)})${pagos.length?`, com ${pagos.length} pagamento(s)/recebimento(s) de ${brl(somaPagos)} registrados no caixa`:''}. Tudo sai do painel, dos relatórios e do caixa.`;
+  if(!await confirmarExclusao(item.tipo==='despesa'?'Excluir despesa?':'Excluir lançamento?',detalhe))return false;
+  const resposta=await api('lancamentos:excluir',{id});
+  aviso(resposta.ok?(item.tipo==='despesa'?'Despesa excluída de todos os cálculos.':'Lançamento excluído de todos os cálculos.'):resposta.erro,!resposta.ok);
+  if(resposta.ok){$('#modal')?.classList.remove('show');edicao=null;}
+  await render();
+  return resposta.ok;
+}
+
 function abrirModal(item=null,predefinido={}){
   edicao=item;
   const form=$('#formLancamento');
   form.reset();
+  $('#excluirNoModal')?.remove();
+  if(item){
+    const botao=document.createElement('button');botao.type='button';botao.id='excluirNoModal';botao.className='outline-button danger-outline';
+    botao.textContent=item.tipo==='despesa'?'Excluir despesa':'Excluir lançamento';
+    botao.onclick=()=>excluirLancamentoComConfirmacao(item.id);
+    form.querySelector('button.primary-action').insertAdjacentElement('afterend',botao);
+  }
   $('#erroLancamento').textContent='';
   form.competencia.value=hoje;
   form.tipo.value=item?.tipo||predefinido.tipo||(['despesas','pagar'].includes(tela)?'despesa':['entradas','receber'].includes(tela)?'entrada':'entrada');
@@ -416,14 +437,7 @@ function ligarEventos(){
     const item=banco.listarLancamentos().find(lancamento=>lancamento.id===botao.dataset.editar);
     if(item)abrirModal(item);
   });
-  $$('[data-excluir]').forEach(botao=>botao.onclick=async()=>{
-    const item=banco.listarLancamentos().find(x=>x.id===botao.dataset.excluir);
-    const pagos=item?banco.listarCaixaDiario().filter(x=>x.lancamentoId===item.id).length:0;
-    if(!await confirmarExclusao('Excluir lançamento?',item?`${item.descricao} — ${brl(item.valorCentavos)} (${dataPt(item.competencia)})${pagos?` e ${pagos} registro(s) vinculado(s) no caixa`:''}.`:'Lançamento selecionado.'))return;
-    const resposta=await api('lancamentos:excluir',{id:botao.dataset.excluir});
-    aviso(resposta.ok?'Lançamento excluído.':resposta.erro,!resposta.ok);
-    render();
-  });
+  $$('[data-excluir]').forEach(botao=>botao.onclick=()=>excluirLancamentoComConfirmacao(botao.dataset.excluir));
   $('#novoModulo')&&($('#novoModulo').onclick=()=>abrirModal(null,{tipo:$('#tabelaModulo').dataset.tipo}));
   $('#busca')&&($('#busca').oninput=filtrarTabela);
   $('#exportar')&&($('#exportar').onclick=async()=>{
