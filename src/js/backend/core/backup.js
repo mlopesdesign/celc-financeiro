@@ -41,7 +41,8 @@ export async function criarBackup(Neutralino, caminhoBanco, { permitirVazio=true
     await Neutralino.filesystem.writeBinaryFile(destinoFinal,dados);
     return { ok:true,caminho:destinoFinal };
   } catch (erro) {
-    console.error('Falha ao criar backup antes da atualização.',erro);
+    console.error('Falha ao criar backup.',erro);
+    if(destino)return { ok:false, erro:`Não foi possível gravar o backup no local escolhido: ${erro?.message||erro}` };
     return { ok:false, erro:'Não foi possível criar o backup antes da atualização. Nenhum arquivo do aplicativo foi trocado.' };
   }
 }

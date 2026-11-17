@@ -49,7 +49,9 @@ export async function verificarAtualizacao(Neutralino,banco,versaoAtual){
 }
 export async function instalarAtualizacao(Neutralino,banco,versaoAtual){
   let consulta;
-  try{consulta=await verificarAtualizacao(Neutralino,banco,versaoAtual);if(!consulta.ok||!consulta.disponivel)return consulta;await banco.aguardarPersistencia?.();
+  try{consulta=await verificarAtualizacao(Neutralino,banco,versaoAtual);if(!consulta.ok||!consulta.disponivel)return consulta;
+    // Falha antiga na fila não bloqueia: a memória já voltou ao disco e o backup abaixo copia o arquivo salvo.
+    try{await banco.aguardarPersistencia?.();}catch(erro){console.error('Gravação pendente falhou antes da atualização; o backup usa o banco salvo em disco.',erro);}
     const backup=await criarBackup(Neutralino,banco.caminho,{permitirVazio:true});if(!backup.ok)return {ok:false,erro:backup.erro};
     const pastaAplicativo=globalThis.window?.NL_PATH;if(!pastaAplicativo)throw Error('Pasta do aplicativo indisponível.');
     const basePath=pastaAplicativo.replace(/[\\/]$/,''),destino=`${basePath}\\resources.neu`,temporario=`${destino}.new`,seguro=valor=>String(valor).replaceAll('"','""'),comando=`curl.exe -L --fail --silent --show-error --output "${seguro(temporario)}" "${consulta.atualizacao.resourcesURL}"`,resultado=await Neutralino.os.execCommand(comando);

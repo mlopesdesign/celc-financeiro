@@ -1,12 +1,12 @@
 import {abrirBancoSeguro} from './backend/db.js';
 import {garantirAcesso,validarAcesso} from './auth.js';
-import {criarApiFinanceira as criarApi} from './backend/servidor.js';
+import {criarApiFinanceira as criarApi,assuntoDeEscrita,mensagemFalhaGravacao} from './backend/servidor.js';
 import {valorRealizado,saldoDoLancamento,pagamentosDaDespesa} from './backend/core/pagamentos.js';
 import {favorecidoDaDespesa} from './backend/core/dashboard.js';
 import {verificarAtualizacao,instalarAtualizacao} from './backend/atualizador.js';
 import {hojeLocal} from './backend/core/datas.js';
 
-const APP_VERSION='0.2.37';
+const APP_VERSION='0.2.38';
 let hoje=hojeLocal();
 let dataCaixa='';
 function centavosDe(texto){let s=String(texto??'').replace(/R\$|\s/g,'');if(s==='')return NaN;if(!/^\d{1,3}(\.\d{3})+(,\d{1,2})?$|^\d+(,\d{1,2})?$|^\d+\.\d{1,2}$/.test(s))return NaN;s=s.includes(',')?s.replace(/\./g,'').replace(',','.'):/^\d{1,3}(\.\d{3})+$/.test(s)?s.replace(/\./g,''):s;return Math.round(Number(s)*100);}
@@ -63,6 +63,25 @@ function aviso(texto,erro=false){
 
 function caminhoDoDialogo(resultado){return Array.isArray(resultado)?resultado[0]||'':typeof resultado==='string'?resultado:'';}
 async function escolherDestinoBackup(){return caminhoDoDialogo(await window.Neutralino.os.showSaveDialog('Salvar backup do CELC Financeiro',{defaultPath:'celc-financeiro-backup.db',filters:[{name:'Banco de dados CELC',extensions:['db']}]}));}
+async function destinoBackupAutomatico(){
+  try{
+    const docs=await window.Neutralino.os.getPath('documents');
+    const pasta=`${docs}\\CELC Financeiro - Backups`;
+    try{await window.Neutralino.filesystem.createDirectory(pasta);}catch{/* já existe */}
+    const agora=new Date(),hora=`${String(agora.getHours()).padStart(2,'0')}h${String(agora.getMinutes()).padStart(2,'0')}`;
+    return `${pasta}\\celc-financeiro-backup-${hojeLocal()}-${hora}.db`;
+  }catch{return '';}
+}
+async function criarBackupInterativo(){
+  let destino='',falhaDialogo='';
+  try{destino=await escolherDestinoBackup();if(!destino)return;}
+  catch(erro){console.error('Janela de destino do backup não abriu.',erro);falhaDialogo=`A janela de escolha do local não abriu neste computador (${erro?.message||erro}).`;destino=await destinoBackupAutomatico();}
+  try{
+    const resposta=await api('backup:criar',{destino});
+    if(resposta.ok)aviso(falhaDialogo?`${falhaDialogo} Backup salvo em: ${resposta.caminho}`:`Backup criado em: ${resposta.caminho}`);
+    else aviso(`${falhaDialogo?falhaDialogo+' ':''}${resposta.erro}`,true);
+  }catch(erro){console.error('Backup falhou.',erro);aviso(`${falhaDialogo?falhaDialogo+' ':''}Não foi possível criar o backup: ${erro?.message||erro}`,true);}
+}
 async function escolherArquivoBackup(){return caminhoDoDialogo(await window.Neutralino.os.showOpenDialog('Selecionar backup do CELC Financeiro',{multiSelections:false,filters:[{name:'Banco de dados CELC',extensions:['db']}]}));}
 
 function dataPt(data){
@@ -530,7 +549,7 @@ function ligarEventos(){
     $$('[data-painel]').forEach(painel=>painel.hidden=painel.dataset.painel!==botao.dataset.aba);
   });
   $('#criarBackup')&&($('#criarBackup').onclick=async()=>{
-    try{const destino=await escolherDestinoBackup();if(!destino)return;const resposta=await api('backup:criar',{destino});aviso(resposta.ok?'Backup criado no local escolhido.':resposta.erro,!resposta.ok);}catch{aviso('Não foi possível abrir a seleção de destino.',true);}
+    await criarBackupInterativo();
   });
   $('#restaurarBackup')&&($('#restaurarBackup').onclick=async evento=>{
     if(evento.currentTarget.dataset.ok!=='1'){
@@ -538,7 +557,7 @@ function ligarEventos(){
       evento.currentTarget.textContent='Confirmar restauração';
       return;
     }
-    try{const caminho=await escolherArquivoBackup();if(!caminho){evento.currentTarget.dataset.ok='0';evento.currentTarget.textContent='Selecionar backup para restaurar';return;}const resposta=await api('backup:restaurar',{caminho});resposta.ok?location.reload():aviso(resposta.erro,true);}catch{aviso('Não foi possível abrir a seleção de backup.',true);}
+    try{const caminho=await escolherArquivoBackup();if(!caminho){evento.currentTarget.dataset.ok='0';evento.currentTarget.textContent='Selecionar backup para restaurar';return;}const resposta=await api('backup:restaurar',{caminho});resposta.ok?location.reload():aviso(resposta.erro,true);}catch(erro){console.error('Restauração falhou.',erro);aviso(`Não foi possível restaurar o backup: ${erro?.message||erro}`,true);}
   });
   $('#verificar')&&($('#verificar').onclick=async()=>{
     const botao=$('#verificar');botao.disabled=true;const versao=APP_VERSION;
@@ -556,7 +575,7 @@ function ligarBase(){
   $$('[data-tela]').forEach(botao=>botao.onclick=()=>irPara(botao.dataset.tela));
   $('#novo').onclick=()=>abrirModal();
   $('#backup').onclick=async()=>{
-    try{const destino=await escolherDestinoBackup();if(!destino)return;const resposta=await api('backup:criar',{destino});aviso(resposta.ok?'Backup criado no local escolhido.':resposta.erro,!resposta.ok);}catch{aviso('Não foi possível abrir a seleção de destino.',true);}
+    await criarBackupInterativo();
   };
   $('#fechar').onclick=()=>$('#modal').classList.remove('show');
   $('#modal').onclick=evento=>{
@@ -639,10 +658,10 @@ function vigiarJanela(){
 function ativarBackupNoFechamento(){
   const neutralino=window.Neutralino;
   if(!neutralino?.events?.on)return;
-  const oferecerFechamento=()=>{
+  const oferecerFechamento=(detalhe='')=>{
     const dialogo=document.createElement('dialog');
     dialogo.className='modal';
-    dialogo.innerHTML='<h2>Backup não concluído</h2><p>O backup automático falhou. Você pode continuar no programa ou fechá-lo sem esse backup.</p><div class="row-actions"><button type="button" class="outline-button">Continuar no programa</button><button type="button" class="primary-action">Fechar mesmo assim</button></div>';
+    dialogo.innerHTML=`<h2>Backup não concluído</h2><p>O backup automático falhou. Você pode continuar no programa ou fechá-lo sem esse backup.</p>${detalhe?`<p class="subtitle">Detalhe: ${esc(detalhe)}</p>`:''}<div class="row-actions"><button type="button" class="outline-button">Continuar no programa</button><button type="button" class="primary-action">Fechar mesmo assim</button></div>`;
     const [continuar,fechar]=dialogo.querySelectorAll('button');
     dialogo.addEventListener('close',()=>{dialogo.remove();fechamentoEmAndamento=false;},{once:true});
     continuar.onclick=()=>dialogo.close();
@@ -656,12 +675,27 @@ function ativarBackupNoFechamento(){
     if(fechamentoEmAndamento)return;
     fechamentoEmAndamento=true;
     try{
-      await banco.aguardarPersistencia();
       const resposta=await api('backup:criar');
-      if(!resposta.ok){oferecerFechamento();return;}
+      if(!resposta.ok){oferecerFechamento(resposta.erro);return;}
       await neutralino.app.exit(0);
-    }catch{oferecerFechamento();}
+    }catch(erro){console.error('Backup no fechamento falhou.',erro);oferecerFechamento(erro?.message||String(erro));}
   });
+}
+
+// Falha ao gravar (outra janela aberta, disco bloqueado): avisa com o erro real e recarrega a tela,
+// pois o banco em memória já voltou para a cópia salva em disco. acesso:* segue o fluxo próprio.
+function protegerGravacoes(apiBase){
+  return async(assunto,dados={})=>{
+    try{return await apiBase(assunto,dados);}
+    catch(erro){
+      if(!assuntoDeEscrita(assunto)||assunto.startsWith('acesso:'))throw erro;
+      console.error(`Falha ao gravar (${assunto}).`,erro);
+      const mensagem=mensagemFalhaGravacao(erro);
+      aviso(mensagem,true);
+      render().catch(falha=>console.error(falha));
+      return {ok:false,erro:mensagem};
+    }
+  };
 }
 
 async function iniciar(){
@@ -673,7 +707,7 @@ async function iniciar(){
     }
     banco=await abrirBancoSeguro();
     await garantirAcesso(banco);
-    api=criarApi({banco,Neutralino:window.Neutralino});
+    api=protegerGravacoes(criarApi({banco,Neutralino:window.Neutralino}));
     ativarBackupNoFechamento();
     $('#loginUsuario').value='admin';
     ligarBase();
